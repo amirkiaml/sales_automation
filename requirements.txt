@@ -1,0 +1,9 @@
+openai-agents
+openai
+fastapi
+uvicorn[standard]
+twilio
+supabase
+python-dotenv
+pydantic
+httpx
