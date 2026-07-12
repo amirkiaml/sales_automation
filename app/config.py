@@ -29,6 +29,7 @@ class Settings:
     APP_BASE_URL: str = os.getenv("APP_BASE_URL", "")
     PUSHOVER_USER: str = os.getenv("PUSHOVER_USER", "")
     PUSHOVER_TOKEN: str = os.getenv("PUSHOVER_TOKEN", "")
+    DEMO_ADMIN_PASSWORD: str = os.getenv("DEMO_ADMIN_PASSWORD", "")
 
     def validate_core(self) -> list[str]:
         """Return a list of missing required vars. Doesn't raise -

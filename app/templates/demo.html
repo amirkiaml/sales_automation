@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VoiceCaptures — Agent Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F2F3F0;
+    --surface: #FFFFFF;
+    --surface-sunken: #EAEBE7;
+    --text: #14171A;
+    --text-muted: #5B6169;
+    --border: #DBDFDC;
+    --accent: #C97A1F;
+    --accent-text: #7A4A11;
+    --agent: #6C63E8;
+    --agent-bg: #EDECFC;
+    --agent-text: #4A41C0;
+    --decision: #16875B;
+    --decision-bg: #E2F5EC;
+    --decision-text: #0F6E4A;
+    --human: #2563D9;
+    --human-bg: #E7EFFD;
+    --human-text: #1C4FAE;
+    --danger: #B3261E;
+    --danger-bg: #FBEAE9;
+    --radius: 10px;
+  }
+  [data-theme="dark"] {
+    --bg: #15171A;
+    --surface: #1D2024;
+    --surface-sunken: #24282D;
+    --text: #ECEDEE;
+    --text-muted: #9AA1A9;
+    --border: #2D3237;
+    --accent: #E0A24B;
+    --accent-text: #F0C27F;
+    --agent: #9A92FF;
+    --agent-bg: #262247;
+    --agent-text: #B6AFFF;
+    --decision: #3FCB94;
+    --decision-bg: #17332A;
+    --decision-text: #6EE0AE;
+    --human: #6D9EFB;
+    --human-bg: #16233D;
+    --human-text: #9CBEFC;
+    --danger: #F0827C;
+    --danger-bg: #3A1D1B;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, Segoe UI, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    line-height: 1.6;
+    transition: background .2s ease, color .2s ease;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 32px 20px 80px; }
+
+  .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; }
+  .mark { font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: .08em; color: var(--text-muted); text-transform: uppercase; }
+  .theme-toggle {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+    padding: 6px 14px; font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    color: var(--text); cursor: pointer; display: flex; align-items: center; gap: 6px;
+  }
+  .theme-toggle:hover { border-color: var(--accent); }
+
+  h1 {
+    font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 28px;
+    margin: 0 0 8px; letter-spacing: -.01em;
+  }
+  .lede { color: var(--text-muted); font-size: 15px; max-width: 60ch; margin: 0 0 20px; }
+  .lede strong { color: var(--text); font-weight: 600; }
+
+  .jumpnav { display: flex; gap: 8px; margin-bottom: 40px; flex-wrap: wrap; }
+  .jumpnav a {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted);
+    text-decoration: none; border: 1px solid var(--border); border-radius: 14px;
+    padding: 5px 12px; transition: all .15s ease;
+  }
+  .jumpnav a:hover { border-color: var(--accent); color: var(--accent-text); }
+
+  .panel {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 28px; margin-bottom: 24px; scroll-margin-top: 20px;
+  }
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--accent-text);
+    display: inline-block; padding: 3px 8px; background: color-mix(in srgb, var(--accent) 14%, transparent);
+    border-radius: 4px; margin-bottom: 14px;
+  }
+  .panel h2 { font-family: 'Space Grotesk', sans-serif; font-size: 19px; margin: 0 0 6px; font-weight: 600; }
+  .panel-desc { color: var(--text-muted); font-size: 14px; margin: 0 0 24px; max-width: 56ch; }
+  .panel-desc code { font-family: 'JetBrains Mono', monospace; font-size: 12px; background: var(--surface-sunken); padding: 1px 5px; border-radius: 3px; }
+
+  label { display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); margin: 16px 0 6px; text-transform: uppercase; letter-spacing: .03em; }
+  .hint { font-weight: 400; text-transform: none; letter-spacing: normal; color: var(--text-muted); font-size: 12px; }
+  .req { color: var(--danger); font-weight: 700; margin-left: 2px; }
+  input[type=text], input[type=tel], input[type=password] {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+    font-size: 14px; font-family: 'Inter', sans-serif; background: var(--surface-sunken); color: var(--text);
+  }
+  input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .row { display: flex; gap: 14px; }
+  .row > div { flex: 1; }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 22px 0; }
+  .owner-block { background: var(--surface-sunken); border-radius: 8px; padding: 14px 16px; margin-top: 20px; }
+  .owner-tag {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--human-text); background: var(--human-bg);
+    padding: 2px 7px; border-radius: 4px; display: inline-block; margin-bottom: 8px;
+  }
+
+  .checkbox-row { display: flex; align-items: flex-start; gap: 8px; margin-top: 18px; font-size: 13px; color: var(--text-muted); }
+  .checkbox-row input { width: auto; margin-top: 2px; }
+
+  button {
+    margin-top: 22px; padding: 11px 20px; background: var(--text); color: var(--bg);
+    border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer;
+    font-family: 'Inter', sans-serif;
+  }
+  button:hover { opacity: .88; }
+  button.secondary { background: transparent; color: var(--text); border: 1px solid var(--border); }
+
+  .result { margin-top: 24px; padding-top: 20px; border-top: 1px dashed var(--border); }
+  .result h3 { font-family: 'JetBrains Mono', monospace; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted); margin: 0 0 10px; font-weight: 500; }
+  .angle-box { background: var(--surface-sunken); border-radius: 8px; padding: 14px 16px; font-size: 14px; margin-bottom: 20px; }
+
+  .ticket { border: 1px solid var(--border); border-left: 3px solid var(--agent); border-radius: 6px; padding: 12px 14px; margin: 10px 0; background: var(--surface); }
+  .ticket.winner { border-left-color: var(--decision); background: color-mix(in srgb, var(--decision-bg) 55%, var(--surface)); }
+  .ticket-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--agent-text); margin-bottom: 6px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .chip { font-size: 10px; padding: 1px 7px; border-radius: 10px; background: var(--decision-bg); color: var(--decision-text); font-weight: 600; }
+  .ticket-body { font-size: 14px; }
+  .reason-note { font-size: 12px; color: var(--decision-text); margin-top: 8px; font-style: italic; }
+  .reason-note b { font-style: normal; font-weight: 600; }
+
+  .status-line { font-family: 'JetBrains Mono', monospace; font-size: 12px; padding: 8px 12px; border-radius: 6px; margin-top: 14px; }
+  .status-line.preview { color: var(--text-muted); background: var(--surface-sunken); }
+  .status-line.requested { color: var(--human-text); background: var(--human-bg); }
+  .status-line.sent { color: var(--decision-text); background: var(--decision-bg); }
+  .status-line.error { color: var(--danger); background: var(--danger-bg); }
+
+  .chat { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+  .bubble { max-width: 78%; padding: 10px 14px; border-radius: 14px; font-size: 14px; }
+  .bubble.inbound { align-self: flex-end; background: var(--text); color: var(--bg); border-bottom-right-radius: 4px; }
+  .bubble.outbound { align-self: flex-start; background: var(--agent-bg); color: var(--agent-text); border-bottom-left-radius: 4px; }
+  .bubble-tag { font-family: 'JetBrains Mono', monospace; font-size: 9px; text-transform: uppercase; letter-spacing: .06em; opacity: .6; display: block; margin-bottom: 3px; }
+  .handoff-badge {
+    display: block; margin-top: 6px; font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    text-transform: uppercase; letter-spacing: .04em; color: var(--human-text); background: var(--human-bg);
+    padding: 3px 8px; border-radius: 4px; align-self: flex-start;
+  }
+  .ended-note {
+    background: var(--human-bg); color: var(--human-text); border-radius: 8px; padding: 14px 16px;
+    font-size: 13px; margin-top: 4px;
+  }
+
+  .setup-form label:first-of-type { margin-top: 0; }
+
+  .flow-steps { display: flex; flex-direction: column; gap: 0; margin: 20px 0; }
+  .flow-step { display: flex; gap: 14px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .flow-step:last-child { border-bottom: none; }
+  .flow-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
+  .flow-dot.agent { background: var(--agent); }
+  .flow-dot.human { background: var(--human); }
+  .flow-dot.code { background: var(--text-muted); }
+  .flow-text b { font-weight: 600; }
+  .flow-text span { color: var(--text-muted); font-size: 13px; }
+
+  .stats-row { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+  .stat { background: var(--surface-sunken); border-radius: 8px; padding: 12px 16px; flex: 1; min-width: 120px; }
+  .stat-num { font-family: 'Space Grotesk', sans-serif; font-size: 22px; font-weight: 600; }
+  .stat-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); margin-top: 2px; }
+
+  .footnote { color: var(--text-muted); font-size: 12px; text-align: center; margin-top: 40px; max-width: 52ch; margin-left: auto; margin-right: auto; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <span class="mark">VoiceCaptures / agent console</span>
+    <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle dark mode">
+      <span id="theme-icon">☾</span><span id="theme-label">Dark</span>
+    </button>
+  </div>
+
+  <h1>Try the outreach agents</h1>
+  <p class="lede">This system runs <strong>five agents</strong> across two live jobs: drafting cold texts to home-service businesses, and holding a conversation once someone replies. Everything below calls the real pipeline — not a mockup.</p>
+
+  <div class="jumpnav">
+    <a href="#cold-panel">1. Watch 3 agents compete →</a>
+    <a href="#chat-panel">2. Chat with the reply agent →</a>
+    <a href="#pipeline-panel">3. How live replies actually ship →</a>
+  </div>
+
+  <div class="panel" id="cold-panel">
+    <span class="eyebrow">Cold outreach · 4 agents</span>
+    <h2>3 agents draft a pitch. 1 picks the winner.</h2>
+    <p class="panel-desc">Enter a business name and, if you have them, a few details. A <code>professional</code>, <code>witty</code>, and <code>executive</code> agent each write their own version, then a fourth <b>picker agent</b> judges which one a real business owner would actually reply to — and explains why. Leave fields blank to see how it handles an incomplete lead.</p>
+    <img src="/static/images/cold-outreach-flow.svg" alt="Cold outreach workflow: three drafting agents feed a picker agent, which feeds a deterministic Twilio send" style="width:100%;height:auto;margin-bottom:24px;">
+
+    <form method="post" action="/demo/cold-outreach">
+      <div class="row">
+        <div>
+          <label>Business name<span class="req">*</span></label>
+          <input type="text" name="name" required value="{{ cold_form.name if cold_form else '' }}" placeholder="e.g. Joe's Plumbing">
+        </div>
+        <div>
+          <label>Type of business <span class="hint">optional</span></label>
+          <input type="text" name="primary_type" placeholder="e.g. plumber" value="{{ cold_form.primary_type if cold_form else '' }}">
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Rating <span class="hint">optional</span></label>
+          <input type="text" name="rating" placeholder="e.g. 4.7" value="{{ cold_form.rating if cold_form else '' }}">
+        </div>
+        <div>
+          <label>Review count <span class="hint">optional</span></label>
+          <input type="text" name="review_count" placeholder="e.g. 12" value="{{ cold_form.review_count if cold_form else '' }}">
+        </div>
+      </div>
+      <label>Opening hours <span class="hint">optional — e.g. "closes at 10pm"</span></label>
+      <input type="text" name="opening_hours" value="{{ cold_form.opening_hours if cold_form else '' }}">
+
+      <hr class="divider">
+
+      <label>Their phone number <span class="hint">only needed if requesting a real text below</span></label>
+      <input type="tel" name="phone" placeholder="+15555550123" value="{{ cold_form.phone if cold_form else '' }}">
+      <div class="checkbox-row">
+        <input type="checkbox" name="request_real_text" id="cold-request" {{ 'checked' if cold_form and cold_form.request_real_text else '' }}>
+        <label for="cold-request" style="margin:0;text-transform:none;font-weight:400;font-size:13px;">Ask the site owner to review this and possibly send it for real — nothing sends on its own.</label>
+      </div>
+
+      <div class="owner-block">
+        <span class="owner-tag">Site owner only</span>
+        <label style="margin:0 0 6px;">Password <span class="hint">unlocks an instant real send instead of queuing for review</span></label>
+        <input type="password" name="admin_password" placeholder="leave blank if that's not you">
+      </div>
+
+      <button type="submit">Draft the message</button>
+    </form>
+
+    {% if cold_result %}
+    <div class="result">
+      <h3>Angle chosen</h3>
+      <div class="angle-box">{{ cold_result.hook_angle }}</div>
+
+      <h3>The 3 drafts — written by 3 different agents</h3>
+      {% for label, text in cold_result.drafts.items() %}
+      <div class="ticket {{ 'winner' if label == cold_result.winner else '' }}">
+        <div class="ticket-label">
+          Written by: {{ agent_names[label] if agent_names else label }}
+          {% if label == cold_result.winner %}<span class="chip">picked</span>{% endif %}
+        </div>
+        <div class="ticket-body">{{ text }}</div>
+        {% if label == cold_result.winner and cold_result.winner_reason %}
+        <div class="reason-note"><b>Why the picker agent chose this one:</b> {{ cold_result.winner_reason }}</div>
+        {% endif %}
+      </div>
+      {% endfor %}
+
+      {% if cold_result.request_error %}
+        <div class="status-line error">{{ cold_result.request_error }}</div>
+      {% elif cold_result.sent_now %}
+        <div class="status-line sent">Sent for real, right now — admin override used.</div>
+      {% elif cold_result.requested %}
+        <div class="status-line requested">Sent to the site owner for review. Nothing has been texted yet.</div>
+      {% else %}
+        <div class="status-line preview">Preview only — nothing sent or queued.</div>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="panel" id="chat-panel">
+    <span class="eyebrow">Live reply · 1 agent + 1 classifier</span>
+    <h2>Chat with the conversational agent</h2>
+    <p class="panel-desc">Start with a sample cold text, then reply as if you were the business owner. This is a single reply agent (no picker — a live reply needs one right answer, not three styles), plus the same triage agent the real system uses to decide when a human should step in.</p>
+    <img src="/static/images/conversation-flow.svg" alt="Conversation workflow: setup, opening cold text, reply loop with triage classification, ending in either continued chat or a simulated human handoff" style="width:100%;height:auto;margin-bottom:24px;">
+
+    {% if conv_result and conv_result.transcript %}
+    <div class="chat">
+      {% for m in conv_result.transcript %}
+      <div class="bubble {{ m.direction }}">
+        <span class="bubble-tag">{{ 'you' if m.direction == 'inbound' else 'agent' }}</span>{{ m.body }}
+      </div>
+      {% if m.flag == 'needs_human' %}
+      <span class="handoff-badge">Triage agent flagged this as a hot lead — a human would take over here</span>
+      {% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if conv_result and conv_result.ended %}
+      <div class="ended-note">In the real system, this thread would now be paused for a human to take over — that's the same handoff logic covered in panel 3. Refresh the page to start a new demo conversation.</div>
+    {% elif conv_result and conv_result.transcript %}
+      <form method="post" action="/demo/conversation">
+        <input type="hidden" name="name" value="{{ conv_form.name }}">
+        <input type="hidden" name="primary_type" value="{{ conv_form.primary_type }}">
+        <input type="hidden" name="history" value="{{ conv_form.history }}">
+
+        <label>Reply as the business owner<span class="req">*</span></label>
+        <input type="text" name="message" id="chat-message-input" required placeholder="Type your reply...">
+
+        <hr class="divider">
+        <label>Your phone number <span class="hint">only needed if requesting a real text below</span></label>
+        <input type="tel" name="phone" placeholder="+15555550123">
+        <div class="checkbox-row">
+          <input type="checkbox" name="request_real_text" id="conv-request">
+          <label for="conv-request" style="margin:0;text-transform:none;font-weight:400;font-size:13px;">Ask the site owner to review this reply and possibly send it for real — nothing sends on its own.</label>
+        </div>
+        <div class="owner-block">
+          <span class="owner-tag">Site owner only</span>
+          <label style="margin:0 0 6px;">Password <span class="hint">unlocks an instant real send instead of queuing for review</span></label>
+          <input type="password" name="admin_password" placeholder="leave blank if that's not you">
+        </div>
+
+        <button type="submit">Send message</button>
+      </form>
+    {% else %}
+      <form method="post" action="/demo/conversation/start" class="setup-form">
+        <label>Business name<span class="req">*</span></label>
+        <input type="text" name="name" required placeholder="e.g. Joe's Plumbing">
+        <label>Type of business <span class="hint">optional</span></label>
+        <input type="text" name="primary_type" placeholder="e.g. plumber">
+        <button type="submit">Start with a sample cold outreach</button>
+      </form>
+    {% endif %}
+
+    {% if conv_result %}
+      {% if conv_result.request_error %}
+        <div class="status-line error">{{ conv_result.request_error }}</div>
+      {% elif conv_result.sent_now %}
+        <div class="status-line sent">Sent for real, right now — admin override used. (SID {{ conv_result.twilio_sid }})</div>
+      {% elif conv_result.requested %}
+        <div class="status-line requested">Sent to the site owner for review. Nothing has been texted yet.</div>
+      {% endif %}
+    {% endif %}
+  </div>
+
+  <div class="panel" id="pipeline-panel">
+    <span class="eyebrow">Behind the scenes</span>
+    <h2>How a real reply actually ships</h2>
+    <p class="panel-desc">The two tools above preview the drafting and triage agents live. What they can't show is the always-on system that runs for real prospects — shown here, not simulated:</p>
+
+    <div class="flow-steps">
+      <div class="flow-step">
+        <span class="flow-dot code"></span>
+        <div class="flow-text"><b>Poller checks Twilio</b> — no webhook. A script asks Twilio's API "anything new?" on an interval, deliberately avoiding a webhook so it never conflicts with other apps sharing the number. <span>app/poll_inbound.py</span></div>
+      </div>
+      <div class="flow-step">
+        <span class="flow-dot agent"></span>
+        <div class="flow-text"><b>Triage agent classifies it</b> — the same one you just used above — interested, question, not interested, opt-out, or hot lead, with a confidence score. <span>app/agents/triage_agent.py</span></div>
+      </div>
+      <div class="flow-step">
+        <span class="flow-dot agent"></span>
+        <div class="flow-text"><b>Draft agent suggests a reply</b> — the same agent powering the chat tool above, but for a real prospect. <span>app/agents/draft_reply_agent.py</span></div>
+      </div>
+      <div class="flow-step">
+        <span class="flow-dot human"></span>
+        <div class="flow-text"><b>A human reviews before it sends</b> — a push notification goes out, and every real reply is approved, edited, or skipped by a person before it reaches anyone. <span>app/review_pending.py</span></div>
+      </div>
+    </div>
+
+    {% if stats and stats.available %}
+    <p class="panel-desc" style="margin-top:20px;">Live counts from the actual database right now — no names or numbers, just proof this is running:</p>
+    <div class="stats-row">
+      <div class="stat"><div class="stat-num">{{ stats.total_messages }}</div><div class="stat-label">Messages logged</div></div>
+      <div class="stat"><div class="stat-num">{{ stats.pending_review }}</div><div class="stat-label">Awaiting review</div></div>
+      <div class="stat"><div class="stat-num">{{ stats.opted_out }}</div><div class="stat-label">Opted out</div></div>
+    </div>
+    {% endif %}
+  </div>
+
+  <p class="footnote">Neither interactive tool can send a real SMS on its own. A review request just notifies the site owner, who decides whether to send it manually — the same approval step every live prospect reply goes through.</p>
+
+</div>
+
+<script>
+  (function () {
+    var stored = localStorage.getItem('vc-theme');
+    var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var theme = stored || (prefersDark ? 'dark' : 'light');
+    applyTheme(theme);
+
+    document.getElementById('theme-toggle').addEventListener('click', function () {
+      var current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+      var next = current === 'dark' ? 'light' : 'dark';
+      applyTheme(next);
+      localStorage.setItem('vc-theme', next);
+    });
+
+    function applyTheme(t) {
+      if (t === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        document.getElementById('theme-icon').textContent = '☀';
+        document.getElementById('theme-label').textContent = 'Light';
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+        document.getElementById('theme-icon').textContent = '☾';
+        document.getElementById('theme-label').textContent = 'Dark';
+      }
+    }
+
+    var chatPanel = document.getElementById('chat-panel');
+    var coldPanel = document.getElementById('cold-panel');
+    if (chatPanel.querySelector('.chat')) {
+      chatPanel.scrollIntoView({ behavior: 'instant', block: 'start' });
+      var input = document.getElementById('chat-message-input');
+      if (input) { input.value = ''; input.focus(); }
+    } else if (coldPanel.querySelector('.result')) {
+      coldPanel.scrollIntoView({ behavior: 'instant', block: 'start' });
+    }
+  })();
+</script>
+</body>
+</html>

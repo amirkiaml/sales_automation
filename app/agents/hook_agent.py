@@ -34,8 +34,12 @@ Good angles look for:
 - Hours that end early or late (missed after-hours calls)
 - High rating but low review count (missed opportunities to convert calls
   into reviews/jobs)
-- No website, or a generic-sounding business type with high call volume
-  likely (plumbers, contractors, HVAC - urgent, time-sensitive calls)
+- A generic-sounding business type with likely high call volume (urgent,
+  time-sensitive calls) - plumbers, contractors, HVAC, electricians
+
+Only use "no website" as an angle if the data explicitly confirms it -
+never treat a missing or unclear website field as proof they don't have
+one; that's a data gap, not a fact about the business.
 
 If nothing in the data stands out, fall back to a general angle about
 missed calls costing jobs for their business type - do not force a weak
@@ -63,7 +67,7 @@ def _format_prospect_for_hook(prospect: dict) -> str:
         f"Neighborhood: {prospect.get('neighborhood') or 'unknown'}\n"
         f"Rating: {prospect.get('rating') or 'unknown'}\n"
         f"Review count: {prospect.get('review_count') or 'unknown'}\n"
-        f"Has website: {'yes' if prospect.get('website') else 'no'}\n"
+        f"Website: {prospect.get('website') or 'unknown - do not assume they lack one'}\n"
         f"Opening hours: {hours_str}"
     )
 
