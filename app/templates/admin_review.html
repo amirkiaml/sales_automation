@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Review queue — VoiceCaptures admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/admin.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <span class="mark">VoiceCaptures / admin</span>
+    <span>
+      <a class="btn secondary small" href="/admin">Dashboard</a>
+      <a class="btn secondary small" href="/admin/logout">Log out</a>
+    </span>
+  </div>
+
+  <a href="/admin" class="back-link">← Dashboard</a>
+  <h1>Review queue</h1>
+  <p class="lede">Every real reply passes through here before it sends. Edit the text inline if you want to change anything - it sends exactly what's in the box.</p>
+
+  <img src="/static/images/real-pipeline-flow.svg" alt="Real pipeline: poll Twilio, triage agent classifies, draft agent suggests a reply, Pushover notifies, human reviews, Twilio sends" style="width:100%;height:auto;margin-bottom:24px;">
+
+  {% if polled %}
+  <div class="error-banner" style="background:var(--decision-bg);color:var(--decision-text);">
+    Poll complete - {{ poll_count }} new message(s) processed.
+  </div>
+  {% endif %}
+
+  <form method="post" action="/admin/poll" style="margin-bottom:24px;">
+    <button type="submit">Check Twilio for new messages now</button>
+  </form>
+
+  {% if pending %}
+    {% for p in pending %}
+    <div class="pending-card">
+      <div class="pending-meta">
+        <a href="/admin/prospects/{{ p.id }}"><b>{{ p.name }}</b></a> · {{ p.phone }} · <span class="badge {{ p.status }}">{{ p.status }}</span>
+      </div>
+      <div class="pending-their-message">{{ p.pending_reply_context }}</div>
+
+      <form method="post" action="/admin/review/{{ p.id }}/send">
+        <label style="margin-top:0;">Reply (edit freely before sending)</label>
+        <textarea name="text">{{ p.pending_reply }}</textarea>
+        <div class="pending-actions">
+          <button type="submit" class="decision">Send</button>
+        </div>
+      </form>
+      <form method="post" action="/admin/review/{{ p.id }}/discard" style="display:inline;">
+        <button type="submit" class="secondary small" style="margin-top:8px;">Discard, don't send</button>
+      </form>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty-state">Nothing waiting on you right now.</div>
+  {% endif %}
+</div>
+</body>
+</html>

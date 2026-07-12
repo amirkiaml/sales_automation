@@ -8,3 +8,5 @@ python-dotenv
 pydantic
 httpx
 python-multipart
+jinja2
+itsdangerous

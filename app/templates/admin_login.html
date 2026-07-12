@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin login — VoiceCaptures</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/admin.css">
+</head>
+<body>
+<div class="wrap narrow">
+  <span class="mark">VoiceCaptures / admin</span>
+  <h1 style="margin-top:16px;">Sign in</h1>
+  <p class="lede">Operator console for the live system. Not the public demo.</p>
+
+  {% if error %}<div class="error-banner">{{ error }}</div>{% endif %}
+
+  <form method="post" action="/admin/login">
+    <label>Password</label>
+    <input type="password" name="password" required autofocus>
+    <button type="submit" style="margin-top:16px;width:100%;">Sign in</button>
+  </form>
+</div>
+</body>
+</html>

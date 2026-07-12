@@ -54,10 +54,15 @@ def update_prospect_status(prospect_id: str, status: str, **extra_fields) -> Non
 
 
 def list_prospects(status: Optional[str] = None, limit: int = 100) -> list[dict[str, Any]]:
-    query = get_client().table("prospects").select("*").limit(limit)
+    query = get_client().table("prospects").select("*").order("updated_at", desc=True).limit(limit)
     if status:
         query = query.eq("status", status)
     return query.execute().data
+
+
+def get_prospect_by_id(prospect_id: str) -> Optional[dict[str, Any]]:
+    result = get_client().table("prospects").select("*").eq("id", prospect_id).limit(1).execute()
+    return result.data[0] if result.data else None
 
 
 def touch_last_reply(prospect_id: str) -> None:

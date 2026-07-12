@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard — VoiceCaptures admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/admin.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <span class="mark">VoiceCaptures / admin</span>
+    <span>
+      <a class="btn secondary small" href="/admin/review">Review queue</a>
+      <a class="btn secondary small" href="/admin/logout">Log out</a>
+    </span>
+  </div>
+
+  <h1>Dashboard</h1>
+  <p class="lede">Real prospects and real activity - the actual system, not a demo.</p>
+
+  <div class="stats-row">
+    {% if stats and stats.available %}
+    <div class="stat"><div class="stat-num">{{ stats.total_messages }}</div><div class="stat-label">Messages logged</div></div>
+    <div class="stat"><div class="stat-num">{{ stats.pending_review }}</div><div class="stat-label">Awaiting review</div></div>
+    <div class="stat"><div class="stat-num">{{ stats.opted_out }}</div><div class="stat-label">Opted out</div></div>
+    {% endif %}
+  </div>
+
+  <div class="panel">
+    <h2>Recent prospects</h2>
+    <p class="lede" style="margin-bottom:14px;">
+      <a href="/admin" class="btn secondary small {{ 'active' if not active_status else '' }}">All</a>
+      <a href="/admin?status=new" class="btn secondary small">New</a>
+      <a href="/admin?status=contacted" class="btn secondary small">Contacted</a>
+      <a href="/admin?status=replied" class="btn secondary small">Replied</a>
+      <a href="/admin?status=needs_human" class="btn secondary small">Needs human</a>
+    </p>
+
+    {% if prospects %}
+    <table>
+      <tr><th>Name</th><th>Phone</th><th>Type</th><th>Status</th><th>Last activity</th></tr>
+      {% for p in prospects %}
+      <tr>
+        <td><a href="/admin/prospects/{{ p.id }}">{{ p.name }}</a></td>
+        <td>{{ p.phone }}</td>
+        <td>{{ p.primary_type or '—' }}</td>
+        <td><span class="badge {{ p.status }}">{{ p.status }}</span></td>
+        <td>{{ p.last_reply_at or p.last_contacted_at or p.created_at }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}
+    <div class="empty-state">No prospects match this filter yet.</div>
+    {% endif %}
+  </div>
+</div>
+</body>
+</html>

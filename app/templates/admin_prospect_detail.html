@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ prospect.name }} — VoiceCaptures admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/admin.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <span class="mark">VoiceCaptures / admin</span>
+    <span>
+      <a class="btn secondary small" href="/admin">Dashboard</a>
+      <a class="btn secondary small" href="/admin/logout">Log out</a>
+    </span>
+  </div>
+
+  <a href="/admin" class="back-link">← Dashboard</a>
+  <h1>{{ prospect.name }}</h1>
+  <p class="lede">
+    {{ prospect.phone }} · {{ prospect.primary_type or 'unknown type' }} ·
+    <span class="badge {{ prospect.status }}">{{ prospect.status }}</span>
+    {% if prospect.pending_reply %} · <a href="/admin/review">has a pending reply →</a>{% endif %}
+  </p>
+
+  <div class="panel">
+    <h2>Conversation</h2>
+    {% if messages %}
+    <div class="chat">
+      {% for m in messages %}
+      <div class="bubble {{ m.direction }}">
+        <span class="bubble-meta">{{ m.direction }} · {{ m.agent_name or 'twilio' }} · {{ m.created_at }}</span>
+        {{ m.body }}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">No messages logged for this prospect yet.</div>
+    {% endif %}
+
+    <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">
+    <h2>Send a manual message</h2>
+    <p class="lede" style="margin-bottom:10px;">Bypasses the agents entirely - sends exactly what you type, right now.</p>
+    <form method="post" action="/admin/prospects/{{ prospect.id }}/send">
+      <textarea name="text" required placeholder="Type a message to send..."></textarea>
+      <button type="submit" style="margin-top:10px;">Send</button>
+    </form>
+  </div>
+</div>
+</body>
+</html>
