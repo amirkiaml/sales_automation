@@ -12,16 +12,11 @@ PUSHOVER_URL = "https://api.pushover.net/1/messages.json"
 
 
 def send_pushover(title: str, message: str) -> None:
-    if not settings.PUSHOVER_USER or not settings.PUSHOVER_TOKEN:
-        print(f"[Pushover not configured - would have sent] {title}: {message}")
-        return
-
-    requests.post(PUSHOVER_URL, data={
-        "user": settings.PUSHOVER_USER,
-        "token": settings.PUSHOVER_TOKEN,
-        "title": title,
-        "message": message,
-    })
+    # Hardcoded off - not settings-driven, so a stray PUSHOVER_ENABLED=true
+    # left over in .env from earlier testing can't accidentally turn this
+    # back on. To re-enable, remove this early return deliberately.
+    print(f"[Pushover disabled] {title}: {message}")
+    return
 
 
 def notify_pending_reply(prospect_name: str, inbound_body: str, suggested_reply: str) -> None:

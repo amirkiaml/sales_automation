@@ -64,6 +64,7 @@ input[type=text], input[type=password] {
   width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
   font-size: 14px; background: var(--surface-sunken); color: var(--text);
 }
+input[type=file] { font-size: 13px; color: var(--text-muted); }
 input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
 textarea {
   width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
@@ -79,6 +80,7 @@ button, .btn {
 button:hover, .btn:hover { opacity: .88; }
 .btn.secondary { background: transparent; color: var(--text); border: 1px solid var(--border); }
 .btn.decision { background: var(--decision); color: white; }
+.btn.danger { background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger); }
 button.small, .btn.small { padding: 5px 10px; font-size: 12px; }
 
 .pending-card { border: 1px solid var(--border); border-left: 3px solid var(--human); border-radius: 8px; padding: 16px; margin-bottom: 14px; }
@@ -86,12 +88,29 @@ button.small, .btn.small { padding: 5px 10px; font-size: 12px; }
 .pending-their-message { background: var(--surface-sunken); border-radius: 6px; padding: 10px 12px; font-size: 13px; margin-bottom: 10px; }
 .pending-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 
+.reply-modes { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-top: 12px; }
+.reply-mode-col { border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+.reply-mode-col.active-mode { border-color: var(--human); background: var(--human-bg); }
+.reply-mode-col h3 { font-family: 'Space Grotesk', sans-serif; font-size: 15px; margin: 0 0 6px; font-weight: 600; }
+@media (max-width: 760px) { .reply-modes { grid-template-columns: 1fr; } }
+
+.trace-log { border: 1px solid var(--border); border-radius: 8px; padding: 6px 0; margin-bottom: 24px; background: var(--surface-sunken); }
+.trace-step { display: flex; gap: 14px; padding: 8px 16px; border-bottom: 1px dashed var(--border); font-size: 13px; align-items: baseline; }
+.trace-step:last-child { border-bottom: none; }
+.trace-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--agent-text); white-space: nowrap; min-width: 170px; flex-shrink: 0; }
+.trace-detail { color: var(--text); word-break: break-word; }
+
 .chat { display: flex; flex-direction: column; gap: 10px; margin: 16px 0; }
 .bubble { max-width: 78%; padding: 10px 14px; border-radius: 14px; font-size: 14px; }
 .bubble.inbound { align-self: flex-end; background: var(--text); color: var(--bg); }
 .bubble.outbound { align-self: flex-start; background: var(--agent-bg); color: var(--agent-text); }
 .bubble-meta { font-family: 'JetBrains Mono', monospace; font-size: 9px; text-transform: uppercase; opacity: .6; display: block; margin-bottom: 3px; }
 
+.bubble.suggested { border: 1.5px dashed var(--human); background: var(--human-bg); color: var(--human-text); align-self: flex-start; max-width: 90%; width: 100%; }
+.bubble.suggested textarea { margin-top: 8px; }
+.new-message-banner { background: var(--decision-bg); color: var(--decision-text); padding: 8px 14px; border-radius: 6px; font-size: 13px; margin-bottom: 14px; }
+.refresh-link { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted); text-decoration: none; }
+.refresh-link:hover { color: var(--text); }
 .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 14px; }
 .error-banner { background: var(--danger-bg); color: var(--danger); padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 16px; }
 .back-link { font-size: 13px; color: var(--text-muted); text-decoration: none; display: inline-block; margin-bottom: 16px; }

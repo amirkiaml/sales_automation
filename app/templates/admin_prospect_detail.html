@@ -23,32 +23,118 @@
   <p class="lede">
     {{ prospect.phone }} · {{ prospect.primary_type or 'unknown type' }} ·
     <span class="badge {{ prospect.status }}">{{ prospect.status }}</span>
-    {% if prospect.pending_reply %} · <a href="/admin/review">has a pending reply →</a>{% endif %}
+    {% if prospect.autopilot %} · <span class="badge needs_human">autopilot on</span>{% endif %}
   </p>
 
   <div class="panel">
-    <h2>Conversation</h2>
-    {% if messages %}
+    <h2>Business info</h2>
+    <table>
+      <tr><th>Neighborhood</th><td>{{ prospect.neighborhood or '—' }}</td></tr>
+      <tr><th>Address</th><td>{{ prospect.address or '—' }}</td></tr>
+      <tr><th>Rating</th><td>{{ prospect.rating or '—' }}{% if prospect.review_count %} ({{ prospect.review_count }} reviews){% endif %}</td></tr>
+      <tr><th>Website</th><td>{% if prospect.website %}<a href="{{ prospect.website }}" target="_blank" rel="noopener">{{ prospect.website }}</a>{% else %}—{% endif %}</td></tr>
+      <tr><th>Opening hours</th><td>
+        {% if prospect.opening_hours %}
+          {% for day, hours in prospect.opening_hours.items() %}{{ day }}: {{ hours }}<br>{% endfor %}
+        {% else %}—{% endif %}
+      </td></tr>
+      <tr><th>Maps</th><td>{% if prospect.maps_url %}<a href="{{ prospect.maps_url }}" target="_blank" rel="noopener">View on Google Maps</a>{% else %}—{% endif %}</td></tr>
+      <tr><th>Source</th><td>{{ prospect.source or '—' }}</td></tr>
+    </table>
+  </div>
+
+  <div class="panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+      <h2 style="margin:0;">Conversation</h2>
+      <span>
+        <a href="/admin/prospects/{{ prospect.id }}" class="refresh-link">↻ Check for new messages</a>
+        <form method="post" action="/admin/prospects/{{ prospect.id }}/delete-history" style="display:inline;" onsubmit="return confirm('Permanently delete this contact\'s entire message history from Supabase? This cannot be undone.');">
+          <button type="submit" class="btn danger small" style="margin-top:0;">Delete history</button>
+        </form>
+      </span>
+    </div>
+
+    {% if new_count %}
+    <div class="new-message-banner">Found {{ new_count }} new message(s) just now - checked automatically when this page opened.</div>
+    {% endif %}
+
     <div class="chat">
       {% for m in messages %}
       <div class="bubble {{ m.direction }}">
         <span class="bubble-meta">{{ m.direction }} · {{ m.agent_name or 'twilio' }} · {{ m.created_at }}</span>
         {{ m.body }}
       </div>
+      {% else %}
+      <div class="empty-state">No messages logged for this prospect yet.</div>
       {% endfor %}
+
+      {% if prospect.pending_reply %}
+      <div class="bubble suggested">
+        <span class="bubble-meta">suggested reply · not sent yet</span>
+        <form method="post" action="/admin/review/{{ prospect.id }}/send">
+          <input type="hidden" name="next" value="/admin/prospects/{{ prospect.id }}">
+          <textarea name="text">{{ prospect.pending_reply }}</textarea>
+          <div class="pending-actions">
+            <button type="submit" class="decision">Send</button>
+          </div>
+        </form>
+        <form method="post" action="/admin/review/{{ prospect.id }}/discard" style="display:inline;">
+          <input type="hidden" name="next" value="/admin/prospects/{{ prospect.id }}">
+          <button type="submit" class="secondary small" style="margin-top:6px;">Discard</button>
+        </form>
+      </div>
+      {% endif %}
     </div>
-    {% else %}
-    <div class="empty-state">No messages logged for this prospect yet.</div>
-    {% endif %}
 
     <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">
-    <h2>Send a manual message</h2>
-    <p class="lede" style="margin-bottom:10px;">Bypasses the agents entirely - sends exactly what you type, right now.</p>
-    <form method="post" action="/admin/prospects/{{ prospect.id }}/send">
-      <textarea name="text" required placeholder="Type a message to send..."></textarea>
-      <button type="submit" style="margin-top:10px;">Send</button>
-    </form>
+
+    <h2>Reply options</h2>
+    <p class="lede" style="margin-bottom:4px;">Three ways to handle this contact - pick whichever fits.</p>
+
+    <div class="reply-modes">
+      <div class="reply-mode-col">
+        <h3>Manual</h3>
+        <p class="lede" style="margin-bottom:8px;">Bypasses the agents entirely - sends exactly what you type.</p>
+        <form method="post" action="/admin/prospects/{{ prospect.id }}/send">
+          <textarea name="text" required placeholder="Type a message..."></textarea>
+          <button type="submit" style="margin-top:10px;">Send</button>
+        </form>
+      </div>
+
+      <div class="reply-mode-col">
+        <h3>Generate (review first)</h3>
+        <p class="lede" style="margin-bottom:8px;">First message? Runs the cold-outreach pipeline (3 personas + picker). Mid-conversation? Uses the single-tone reply agent on their actual last message. Lands here for you to review before sending.</p>
+        <form method="post" action="/admin/prospects/{{ prospect.id }}/generate">
+          <button type="submit" class="secondary">Generate suggested reply</button>
+        </form>
+      </div>
+
+      <div class="reply-mode-col {{ 'active-mode' if prospect.autopilot else '' }}">
+        <h3>Autopilot</h3>
+        {% if prospect.autopilot %}
+        <p class="lede" style="margin-bottom:8px;color:var(--human-text);">On - the SDR agent replies and sends on its own. Escalates and turns itself off if they ask for a human or show a real buying signal.</p>
+        <form method="post" action="/admin/prospects/{{ prospect.id }}/autopilot">
+          <input type="hidden" name="enabled" value="false">
+          <button type="submit" class="secondary">Turn off</button>
+        </form>
+        {% else %}
+        <p class="lede" style="margin-bottom:8px;">Off (default). Turn on to let the SDR agent handle this contact's replies automatically until it escalates.</p>
+        <form method="post" action="/admin/prospects/{{ prospect.id }}/autopilot">
+          <input type="hidden" name="enabled" value="true">
+          <button type="submit" class="secondary">Turn on</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
   </div>
 </div>
+
+<script>
+  setInterval(function () {
+    var active = document.activeElement;
+    var isTyping = active && (active.tagName === 'TEXTAREA' || active.tagName === 'INPUT') && active.value.length > 0;
+    if (!isTyping) location.reload();
+  }, 2000);
+</script>
 </body>
 </html>

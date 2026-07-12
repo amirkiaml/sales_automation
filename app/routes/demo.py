@@ -3,12 +3,12 @@ Public-facing demo page - lets someone without command-line access (a
 recruiter, for instance) try the agent pipelines in a browser.
 
 Safety model: a site visitor can NEVER trigger a real Twilio send. Their
-"request a real text" option only writes to the pending_reply/Pushover
-approval queue (app/review_pending.py) - same path real prospect replies
-use. The one exception is the site owner: an optional password field,
-checked server-side against DEMO_ADMIN_PASSWORD, unlocks an instant real
-send that bypasses the queue. If DEMO_ADMIN_PASSWORD is unset in .env,
-that path is disabled entirely - there's no password to match.
+"request a real text" option only writes to the pending_reply queue -
+same path real prospect replies use, reviewed in /admin/review. The one
+exception is the site owner: an optional password field, checked
+server-side against DEMO_ADMIN_PASSWORD, unlocks an instant real send
+that bypasses the queue. If DEMO_ADMIN_PASSWORD is unset in .env, that
+path is disabled entirely - there's no password to match.
 """
 import base64
 import json
@@ -24,7 +24,6 @@ from app.agents.drafting_agents import DRAFTING_AGENTS
 from app.agents.draft_reply_agent import draft_reply
 from app.agents.triage_agent import classify as classify_intent
 from app.db.client import upsert_prospect, set_pending_reply, get_demo_stats
-from app.tools.notifications import notify_pending_reply
 from app.tools.twilio_sms import send_sms
 from app.tools.rate_limit import check_and_record
 
@@ -131,7 +130,6 @@ async def demo_cold_outreach(
                 demo_prospect["id"], pending_reply=result["sent_text"],
                 context="[Demo] cold outreach draft requested for review",
             )
-            notify_pending_reply(f"[DEMO] {name}", "(cold outreach demo request)", result["sent_text"])
             cold_result["requested"] = True
 
     return templates.TemplateResponse(
@@ -240,7 +238,6 @@ async def demo_conversation(
                 demo_prospect["id"], pending_reply=reply_text,
                 context=f"[Demo] conversation request - last message: {message}",
             )
-            notify_pending_reply(f"[DEMO] {name or 'Demo visitor'}", message, reply_text)
             conv_result["requested"] = True
 
     return templates.TemplateResponse(

@@ -74,6 +74,20 @@ def parse_row(row: dict[str, str]) -> dict:
     }
 
 
+def import_rows(reader: csv.DictReader) -> tuple[int, int]:
+    """Shared by the CLI script and the admin console's upload form -
+    one implementation, so a CSV imported either way behaves identically."""
+    imported, skipped = 0, 0
+    for row in reader:
+        parsed = parse_row(row)
+        if not parsed["name"] or not parsed["phone"]:
+            skipped += 1
+            continue
+        upsert_prospect(parsed)
+        imported += 1
+    return imported, skipped
+
+
 def import_csv(path: str) -> None:
     file_path = Path(path)
     with file_path.open(newline="", encoding="utf-8") as f:
@@ -81,15 +95,7 @@ def import_csv(path: str) -> None:
         f.seek(0)
         dialect = csv.Sniffer().sniff(sample, delimiters=",\t")
         reader = csv.DictReader(f, dialect=dialect)
-
-        imported, skipped = 0, 0
-        for row in reader:
-            parsed = parse_row(row)
-            if not parsed["name"] or not parsed["phone"]:
-                skipped += 1
-                continue
-            upsert_prospect(parsed)
-            imported += 1
+        imported, skipped = import_rows(reader)
 
     print(f"Imported/updated {imported} prospects, skipped {skipped} rows (missing name/phone).")
 

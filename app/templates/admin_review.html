@@ -22,12 +22,22 @@
   <h1>Review queue</h1>
   <p class="lede">Every real reply passes through here before it sends. Edit the text inline if you want to change anything - it sends exactly what's in the box.</p>
 
-  <img src="/static/images/real-pipeline-flow.svg" alt="Real pipeline: poll Twilio, triage agent classifies, draft agent suggests a reply, Pushover notifies, human reviews, Twilio sends" style="width:100%;height:auto;margin-bottom:24px;">
+  <img src="/static/images/real-pipeline-flow.svg" alt="Real pipeline: poll Twilio, triage agent classifies, draft agent suggests a reply, human reviews, Twilio sends" style="width:100%;height:auto;margin-bottom:24px;">
 
   {% if polled %}
   <div class="error-banner" style="background:var(--decision-bg);color:var(--decision-text);">
     Poll complete - {{ poll_count }} new message(s) processed.
   </div>
+  {% if trace %}
+  <div class="trace-log">
+    {% for step in trace %}
+    <div class="trace-step">
+      <span class="trace-label">{{ step.label }}</span>
+      <span class="trace-detail">{{ step.detail }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
   {% endif %}
 
   <form method="post" action="/admin/poll" style="margin-bottom:24px;">
@@ -58,5 +68,18 @@
     <div class="empty-state">Nothing waiting on you right now.</div>
   {% endif %}
 </div>
+
+<script>
+  // Refreshes every 2s to pick up anything the background watcher
+  // (python -m app.poll_inbound --watch) has processed since the page
+  // loaded. This page itself doesn't poll Twilio on GET - only the
+  // "Check Twilio" button and the background watcher do that. Skipped
+  // while editing a reply, so it won't wipe out an in-progress edit.
+  setInterval(function () {
+    var active = document.activeElement;
+    var isEditing = active && active.tagName === 'TEXTAREA' && active.value.length > 0;
+    if (!isEditing) location.reload();
+  }, 2000);
+</script>
 </body>
 </html>

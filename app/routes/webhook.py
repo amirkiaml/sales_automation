@@ -79,6 +79,7 @@ async def inbound_sms(request: Request):
         prospect_id=prospect["id"],
         direction="inbound",
         body=body,
+        phone=from_phone,
         twilio_sid=message_sid,
         metadata=form,  # full raw webhook payload - From, To, NumMedia, etc.
     )

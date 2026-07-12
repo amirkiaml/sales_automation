@@ -29,10 +29,40 @@
     {% endif %}
   </div>
 
+  {% if imported %}
+  <div class="error-banner" style="background:var(--decision-bg);color:var(--decision-text);">
+    Imported/updated {{ imported }} prospects, skipped {{ skipped }} row(s) missing a name or phone.
+  </div>
+  {% endif %}
+
+  <div class="panel">
+    <h2>Add or import contacts</h2>
+    <div style="display:flex;gap:24px;flex-wrap:wrap;">
+      <form method="post" action="/admin/prospects/add" style="flex:1;min-width:240px;">
+        <label style="margin-top:0;">Add one contact</label>
+        <input type="text" name="name" placeholder="Business name" required style="margin-bottom:8px;">
+        <input type="text" name="phone" placeholder="+15555550123" required style="margin-bottom:8px;">
+        <input type="text" name="primary_type" placeholder="Type (optional)">
+        <button type="submit" class="small" style="margin-top:12px;">Add contact</button>
+      </form>
+      <form method="post" action="/admin/prospects/import" enctype="multipart/form-data" style="flex:1;min-width:240px;">
+        <label style="margin-top:0;">Import a CSV</label>
+        <p class="lede" style="margin-bottom:8px;">Needs at least <code>name</code> and <code>phone</code> columns.</p>
+        <input type="file" name="file" accept=".csv" required>
+        <button type="submit" class="small" style="margin-top:12px;">Upload and import</button>
+      </form>
+    </div>
+  </div>
+
   <div class="panel">
     <h2>Recent prospects</h2>
+    <form method="get" action="/admin" style="margin-bottom:14px;">
+      <input type="text" name="q" placeholder="Search by name or phone..." value="{{ q or '' }}" style="max-width:300px;display:inline-block;">
+      <button type="submit" class="small">Search</button>
+      {% if q %}<a href="/admin" class="btn secondary small">Clear</a>{% endif %}
+    </form>
     <p class="lede" style="margin-bottom:14px;">
-      <a href="/admin" class="btn secondary small {{ 'active' if not active_status else '' }}">All</a>
+      <a href="/admin" class="btn secondary small">All</a>
       <a href="/admin?status=new" class="btn secondary small">New</a>
       <a href="/admin?status=contacted" class="btn secondary small">Contacted</a>
       <a href="/admin?status=replied" class="btn secondary small">Replied</a>
@@ -44,7 +74,7 @@
       <tr><th>Name</th><th>Phone</th><th>Type</th><th>Status</th><th>Last activity</th></tr>
       {% for p in prospects %}
       <tr>
-        <td><a href="/admin/prospects/{{ p.id }}">{{ p.name }}</a></td>
+        <td><a href="/admin/prospects/{{ p.id }}">{{ p.name }}</a>{% if p.autopilot %} <span class="badge needs_human" title="Autopilot on">auto</span>{% endif %}</td>
         <td>{{ p.phone }}</td>
         <td>{{ p.primary_type or '—' }}</td>
         <td><span class="badge {{ p.status }}">{{ p.status }}</span></td>
@@ -52,6 +82,16 @@
       </tr>
       {% endfor %}
     </table>
+
+    {% if not q and total_pages and total_pages > 1 %}
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;">
+      <span class="lede" style="margin:0;">Page {{ page }} of {{ total_pages }} · {{ total }} total</span>
+      <span>
+        {% if page > 1 %}<a class="btn secondary small" href="/admin?status={{ active_status }}&page={{ page - 1 }}&page_size={{ page_size }}">← Prev</a>{% endif %}
+        {% if page < total_pages %}<a class="btn secondary small" href="/admin?status={{ active_status }}&page={{ page + 1 }}&page_size={{ page_size }}">Next →</a>{% endif %}
+      </span>
+    </div>
+    {% endif %}
     {% else %}
     <div class="empty-state">No prospects match this filter yet.</div>
     {% endif %}

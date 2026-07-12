@@ -43,6 +43,7 @@ def send_sms(to_phone: str, body: str, prospect_id: str, agent_name: str = "") -
         prospect_id=prospect_id,
         direction="outbound",
         body=body,
+        phone=to_phone,
         twilio_sid=message.sid,
         twilio_status=message.status,
         agent_name=agent_name,
