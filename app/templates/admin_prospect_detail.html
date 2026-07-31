@@ -26,6 +26,25 @@
     {% if prospect.autopilot %} · <span class="badge needs_human">autopilot on</span>{% endif %}
   </p>
 
+  {% if error %}
+  <div class="new-message-banner" style="border-color:#c0392b;color:#c0392b;">{{ error }}</div>
+  {% endif %}
+
+  {% if sharing %}
+  <div class="new-message-banner" style="border-color:#b7791f;color:#b7791f;">
+    <strong>{{ sharing | length + 1 }} prospects share {{ prospect.phone }}.</strong>
+    Inbound replies from this number route to whichever was updated most
+    recently — currently
+    {% if sharing and sharing[0].updated_at > prospect.updated_at %}
+      <a href="/admin/prospects/{{ sharing[0].id }}">{{ sharing[0].name }}</a>, not this one.
+    {% else %}
+      this one.
+    {% endif %}
+    Also on this number:
+    {% for s in sharing %}<a href="/admin/prospects/{{ s.id }}">{{ s.name }}</a>{% if not loop.last %}, {% endif %}{% endfor %}.
+  </div>
+  {% endif %}
+
   <div class="panel">
     <h2>Business info</h2>
     <table>
@@ -41,6 +60,64 @@
       <tr><th>Maps</th><td>{% if prospect.maps_url %}<a href="{{ prospect.maps_url }}" target="_blank" rel="noopener">View on Google Maps</a>{% else %}—{% endif %}</td></tr>
       <tr><th>Source</th><td>{{ prospect.source or '—' }}</td></tr>
     </table>
+  </div>
+
+  <div class="panel">
+    <details>
+      <summary style="cursor:pointer;font-weight:600;">Edit details</summary>
+      <p class="lede" style="margin-top:10px;">
+        Point this prospect at your own number to test the live pipeline
+        without messaging a real contractor. Status, opt-out and autopilot
+        are not editable here on purpose.
+      </p>
+      <form method="post" action="/admin/prospects/{{ prospect.id }}/edit">
+      <table>
+      <tr><th><label for="f_name">Name</label></th>
+        <td><input id="f_name" name="name" value="{{ prospect.name or '' }}" required
+             style="width:100%;padding:6px 8px;font:inherit;"></td></tr>
+      <tr><th><label for="f_phone">Phone</label></th>
+        <td><input id="f_phone" name="phone" value="{{ prospect.phone or '' }}" required placeholder="+16472518320"
+             style="width:100%;padding:6px 8px;font:inherit;"></td></tr>
+      <tr><th><label for="f_primary_type">Type</label></th>
+        <td><input id="f_primary_type" name="primary_type" value="{{ prospect.primary_type or '' }}" 
+             style="width:100%;padding:6px 8px;font:inherit;"></td></tr>
+      <tr><th><label for="f_neighborhood">Neighborhood</label></th>
+        <td><input id="f_neighborhood" name="neighborhood" value="{{ prospect.neighborhood or '' }}" 
+             style="width:100%;padding:6px 8px;font:inherit;"></td></tr>
+      <tr><th><label for="f_address">Address</label></th>
+        <td><input id="f_address" name="address" value="{{ prospect.address or '' }}" 
+             style="width:100%;padding:6px 8px;font:inherit;"></td></tr>
+      <tr><th><label for="f_rating">Rating</label></th>
+        <td><input id="f_rating" name="rating" value="{{ prospect.rating or '' }}" type="number" step="0.1" min="0" max="5"
+             style="width:100%;padding:6px 8px;font:inherit;"></td></tr>
+      <tr><th><label for="f_review_count">Review count</label></th>
+        <td><input id="f_review_count" name="review_count" value="{{ prospect.review_count or '' }}" type="number" min="0"
+             style="width:100%;padding:6px 8px;font:inherit;"></td></tr>
+      <tr><th><label for="f_website">Website</label></th>
+        <td><input id="f_website" name="website" value="{{ prospect.website or '' }}" 
+             style="width:100%;padding:6px 8px;font:inherit;"></td></tr>
+      <tr><th><label for="f_maps_url">Maps URL</label></th>
+        <td><input id="f_maps_url" name="maps_url" value="{{ prospect.maps_url or '' }}" 
+             style="width:100%;padding:6px 8px;font:inherit;"></td></tr>
+      <tr><th><label for="f_hours">Opening hours</label></th>
+        <td><textarea id="f_hours" name="opening_hours" rows="4"
+             placeholder='{"monday": "8:00 AM - 6:00 PM"}'
+             style="width:100%;padding:6px 8px;font:inherit;">{% if prospect.opening_hours %}{{ prospect.opening_hours | tojson }}{% endif %}</textarea>
+          <small>Raw JSON. Leave blank to clear.</small></td></tr>
+      </table>
+      <button type="submit" class="btn small">Save changes</button>
+      </form>
+
+      <hr style="margin:20px 0;border:none;border-top:1px solid var(--border,#ddd);">
+      <form method="post" action="/admin/prospects/{{ prospect.id }}/delete"
+            onsubmit="return confirm('Delete {{ prospect.name }} and every message? This cannot be undone.{% if prospect.opted_out %} Their opt-out will be kept on the suppression list.{% endif %}');">
+        <button type="submit" class="btn danger small">Delete this prospect</button>
+        <small style="display:block;margin-top:6px;">
+          Removes the prospect and all messages.
+          {% if prospect.opted_out %}Their number stays on the suppression list.{% endif %}
+        </small>
+      </form>
+    </details>
   </div>
 
   <div class="panel">
@@ -130,11 +207,37 @@
 </div>
 
 <script>
+  // Auto-refresh so inbound replies appear without a manual reload.
+  //
+  // Suspended whenever the operator is mid-interaction, otherwise the
+  // reload destroys what they were doing. Three cases, all previously
+  // broken or missing:
+  //   1. An open <details> panel (the edit form) - a reload collapses it.
+  //   2. Focus in any input/textarea. The old check also required
+  //      value.length > 0, so clicking an empty field and pausing still
+  //      reloaded out from under you.
+  //   3. Any unsaved edit, even if focus has moved elsewhere.
+  //
+  // Interval raised 2s -> 10s: this page polls Twilio server-side on
+  // every render, so a 2s reload was ~30 Twilio calls/minute per open
+  // tab, and the overlapping polls it caused are the exact duplicate-row
+  // bug migration 004 added a unique index to defend against.
+  var REFRESH_MS = 10000;
+
+  function isBusy() {
+    if (document.querySelector('details[open]')) return true;
+    var a = document.activeElement;
+    if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA')) return true;
+    return document.body.dataset.dirty === '1';
+  }
+
+  document.addEventListener('input', function (e) {
+    if (e.target.closest('form')) document.body.dataset.dirty = '1';
+  });
+
   setInterval(function () {
-    var active = document.activeElement;
-    var isTyping = active && (active.tagName === 'TEXTAREA' || active.tagName === 'INPUT') && active.value.length > 0;
-    if (!isTyping) location.reload();
-  }, 2000);
+    if (!isBusy()) location.reload();
+  }, REFRESH_MS);
 </script>
 </body>
 </html>

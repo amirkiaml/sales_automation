@@ -16,7 +16,7 @@ create table if not exists prospects (
     primary_type    text,               -- e.g. "general_contractor", "plumber"
     neighborhood    text,
     address         text,
-    phone           text not null unique,   -- E.164 format, e.g. +16472518320
+    phone           text not null,          -- E.164, e.g. +16472518320. NOT unique - see migration 006
     rating          numeric,
     review_count    integer,
     website         text,

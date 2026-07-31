@@ -21,6 +21,7 @@ from app.db.client import (
     upsert_prospect,
     log_message,
     update_prospect_status,
+    add_suppression,
     touch_last_reply,
     get_conversation_history,
     update_message_status,
@@ -87,6 +88,7 @@ async def inbound_sms(request: Request):
 
     if body.lower() in STOP_KEYWORDS:
         update_prospect_status(prospect["id"], status="opted_out", opted_out=True)
+        add_suppression(from_phone, reason="opt_out", prospect_id=prospect["id"])
         return EMPTY_TWIML
 
     with trace(f"Inbound reply - {prospect['name']}"):
@@ -94,6 +96,7 @@ async def inbound_sms(request: Request):
 
         if triage.intent == "opt_out":
             update_prospect_status(prospect["id"], status="opted_out", opted_out=True)
+            add_suppression(from_phone, reason="opt_out", prospect_id=prospect["id"])
             return EMPTY_TWIML
 
         status_map = {

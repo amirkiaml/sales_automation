@@ -30,28 +30,143 @@ def get_client() -> Client:
 # ---------------------------------------------------------------------
 
 def upsert_prospect(prospect: dict[str, Any]) -> dict[str, Any]:
-    """Insert a prospect, or update it if the phone number already exists."""
-    result = get_client().table("prospects").upsert(
-        prospect, on_conflict="phone"
-    ).execute()
+    """Insert a prospect, or update the existing one with this phone number.
+
+    Implemented as an explicit lookup-then-write rather than Postgres
+    ON CONFLICT (phone): migration 006 dropped the unique constraint on
+    phone so several prospects can share a number for testing, and
+    ON CONFLICT requires a unique index on the conflict target.
+
+    When duplicates exist this updates the most recently touched one,
+    matching get_prospect_by_phone's routing rule so an import and an
+    inbound message always resolve to the same row.
+
+    Not atomic - two concurrent imports of the same number can both see
+    "no match" and insert. Acceptable here: imports are operator-initiated
+    and single-threaded. If that changes, the fix is a unique index on
+    (phone) with a partial predicate excluding test rows, not a lock.
+    """
+    existing = get_prospect_by_phone(prospect["phone"])
+    if existing:
+        payload = {k: v for k, v in prospect.items() if k != "id"}
+        result = (
+            get_client().table("prospects")
+            .update(payload).eq("id", existing["id"]).execute()
+        )
+        return result.data[0] if result.data else existing
+
+    result = get_client().table("prospects").insert(prospect).execute()
     return result.data[0]
 
 
 def get_prospect_by_phone(phone: str) -> Optional[dict[str, Any]]:
+    """Resolve an inbound number to a prospect.
+
+    Phone numbers are no longer unique (migration 006), so this picks the
+    most recently updated match. That makes routing deterministic instead
+    of "whatever Postgres returned first", and gives the intended testing
+    behaviour: point a prospect at your own number and it immediately
+    becomes the one that receives replies, because editing it bumps
+    updated_at.
+
+    Consequence worth knowing: the previous holder of that number stops
+    receiving inbound until it is touched again.
+    """
     result = (
         get_client()
         .table("prospects")
         .select("*")
         .eq("phone", phone)
+        .order("updated_at", desc=True)
         .limit(1)
         .execute()
     )
     return result.data[0] if result.data else None
 
 
+def list_prospects_sharing_phone(phone: str, exclude_id: str = "") -> list[dict[str, Any]]:
+    """Other prospects on the same number - drives the admin warning."""
+    result = (
+        get_client().table("prospects")
+        .select("id,name,status,updated_at")
+        .eq("phone", phone)
+        .order("updated_at", desc=True)
+        .execute()
+    )
+    return [r for r in (result.data or []) if r["id"] != exclude_id]
+
+
 def update_prospect_status(prospect_id: str, status: str, **extra_fields) -> None:
     payload = {"status": status, **extra_fields}
     get_client().table("prospects").update(payload).eq("id", prospect_id).execute()
+
+
+class DuplicatePhoneError(Exception):
+    """Raised when an edit would collide with another prospect's number."""
+
+
+def update_prospect(prospect_id: str, fields: dict[str, Any]) -> None:
+    """Update arbitrary prospect columns by id.
+
+    Distinct from upsert_prospect(), which conflicts on `phone` - that is
+    correct for CSV import but wrong here, because changing a phone number
+    would insert a second row instead of editing the existing one.
+
+    `phone` is UNIQUE, so an edit can collide with another prospect. That
+    surfaces as a Postgres 23505 and is re-raised as DuplicatePhoneError
+    so the caller can show a real message instead of a 500.
+    """
+    try:
+        get_client().table("prospects").update(fields).eq("id", prospect_id).execute()
+    except APIError as e:
+        if getattr(e, "code", None) == "23505" or "23505" in str(e):
+            raise DuplicatePhoneError(fields.get("phone", "")) from e
+        raise
+
+
+def add_suppression(phone: str, reason: str, prospect_id: str = "", note: str = "") -> None:
+    """Record a permanent do-not-contact for this number.
+
+    Append-only and independent of the prospects table, so an opt-out
+    survives the prospect being deleted or the CSV being re-imported.
+    """
+    payload = {"phone": phone, "reason": reason, "note": note or None}
+    if prospect_id:
+        payload["prospect_id"] = prospect_id
+    try:
+        get_client().table("suppressions").insert(payload).execute()
+    except APIError as e:
+        # Already suppressed - the obligation is already recorded, so the
+        # duplicate is a no-op rather than an error.
+        if getattr(e, "code", None) == "23505" or "23505" in str(e):
+            return
+        raise
+
+
+def is_suppressed(phone: str) -> bool:
+    result = (
+        get_client().table("suppressions")
+        .select("phone").eq("phone", phone).limit(1).execute()
+    )
+    return bool(result.data)
+
+
+def delete_prospect(prospect_id: str) -> None:
+    """Delete a prospect and, by FK cascade, all of its messages.
+
+    Any opt-out is written to `suppressions` first. Deleting the row must
+    not delete the obligation - see migration 007.
+    """
+    prospect = get_prospect_by_id(prospect_id)
+    if not prospect:
+        return
+    if prospect.get("opted_out"):
+        add_suppression(
+            prospect["phone"], reason="prospect_deleted",
+            prospect_id=prospect_id,
+            note=f"opted-out prospect '{prospect.get('name', '')}' deleted",
+        )
+    get_client().table("prospects").delete().eq("id", prospect_id).execute()
 
 
 def list_prospects_page(
