@@ -27,7 +27,7 @@ class Settings:
 
     # App
     APP_BASE_URL: str = os.getenv("APP_BASE_URL", "")
-    DEMO_ADMIN_PASSWORD: str = os.getenv("DEMO_ADMIN_PASSWORD", "")
+    ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", "")
     SESSION_SECRET_KEY: str = os.getenv("SESSION_SECRET_KEY", "")
 
     def validate_core(self) -> list[str]:

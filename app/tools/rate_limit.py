@@ -1,10 +1,10 @@
 """
-In-memory rate limiter for real sends triggered from the public demo page.
+In-memory rate limiter for the /admin login and send paths.
 Deliberately simple - a dict of timestamps per IP, no external dependency.
 
 Known limitation, worth naming rather than hiding: this resets if the
 process restarts, and doesn't share state across multiple server
-instances. Fine for a portfolio demo behind a single process; a
+instances. Fine behind a single process; a
 production version would back this with Redis.
 """
 import time

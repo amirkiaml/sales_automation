@@ -18,7 +18,7 @@ from fastapi.templating import Jinja2Templates
 from app.config import settings
 from app.db.client import (
     list_prospects_page, search_prospects, get_prospect_by_id, list_pending_replies,
-    clear_pending_reply, get_conversation_history, get_demo_stats, upsert_prospect, set_pending_reply,
+    clear_pending_reply, get_conversation_history, get_pipeline_stats, upsert_prospect, set_pending_reply,
     set_autopilot, update_prospect_status,
 )
 from app.db.import_csv import import_rows, normalize_phone
@@ -58,7 +58,7 @@ async def login_submit(request: Request, password: str = Form(...)):
             request, "admin_login.html", {"error": "Too many attempts - try again later."}
         )
 
-    if not settings.DEMO_ADMIN_PASSWORD or not secrets.compare_digest(password, settings.DEMO_ADMIN_PASSWORD):
+    if not settings.ADMIN_PASSWORD or not secrets.compare_digest(password, settings.ADMIN_PASSWORD):
         return templates.TemplateResponse(request, "admin_login.html", {"error": "Incorrect password."})
 
     request.session["is_admin"] = True
@@ -87,7 +87,7 @@ async def dashboard(
     else:
         prospects, total = list_prospects_page(status=status or None, page=page, page_size=page_size)
 
-    stats = get_demo_stats()
+    stats = get_pipeline_stats()
     total_pages = (total // page_size + (1 if total % page_size else 0)) if total is not None else None
 
     return templates.TemplateResponse(

@@ -6,8 +6,6 @@ Then tunnel it publicly for Twilio to reach (see docs/local_testing.md):
     ngrok http 8000
 """
 import logging
-
-import logging
 import secrets as _secrets
 
 from fastapi import FastAPI
@@ -17,7 +15,6 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.config import settings
 from app.routes.webhook import router as webhook_router
-from app.routes.demo import router as demo_router
 from app.routes.admin import router as admin_router
 
 logging.basicConfig(level=logging.INFO)
@@ -37,13 +34,12 @@ app.add_middleware(SessionMiddleware, secret_key=session_secret)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 app.include_router(webhook_router)
-app.include_router(demo_router)
 app.include_router(admin_router)
 
 
 @app.get("/")
 async def root():
-    return RedirectResponse(url="/demo")
+    return RedirectResponse(url="/admin")
 
 
 @app.on_event("startup")

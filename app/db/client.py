@@ -200,7 +200,7 @@ def get_last_inbound_timestamp_for_prospect(prospect_id: str) -> str | None:
     return result.data[0]["created_at"] if result.data else None
 
 
-def get_demo_stats() -> dict:
+def get_pipeline_stats() -> dict:
     """Aggregate counts only - never returns names, numbers, or message
     content. Safe to show on a public demo page as proof the system is
     live, without exposing any real prospect's data."""
