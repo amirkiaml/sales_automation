@@ -1,0 +1,269 @@
+# VoiceCaptures knowledge base.
+#
+# The autopilot SDR agent may state a fact ONLY if it appears here. The
+# grounding guardrail checks its draft against the entries it retrieved
+# and blocks the send if it drifts. So this file is the boundary between
+# "the agent knows this" and "the agent is improvising at a stranger".
+#
+# ┌─────────────────────────────────────────────────────────────────┐
+# │ EVERY `answer` BELOW IS A PLACEHOLDER UNTIL YOU VERIFY IT.      │
+# │ These are reconstructed from project notes, not from the real   │
+# │ product. Anything wrong here gets texted to a real contractor   │
+# │ in your name. Read every line before enabling autopilot.        │
+# │ Entries marked UNVERIFIED are ones I could not source at all.   │
+# └─────────────────────────────────────────────────────────────────┘
+#
+# Editing rules:
+#   - `answer` is what the agent may assert. Keep it factual and short;
+#     the agent rephrases for tone, it does not add facts.
+#   - `triggers` are matched literally (case-insensitive substring) plus
+#     word overlap. Add real phrasings prospects actually use.
+#   - If you cannot state something precisely, put it in `restricted`
+#     instead. Escalating to a human is always the safe failure.
+
+entries:
+  - id: what_is_voicecaptures
+    topic: product_overview
+    triggers:
+      - what is voicecaptures
+      - what do you do
+      - what does it do
+      - what is this
+      - never heard of you
+      - what's this about
+    answer: >-
+      VoiceCaptures is an AI voice receptionist built for home service
+      businesses - contractors, plumbers, electricians, HVAC. It answers
+      calls you can't get to, qualifies the job, books the appointment,
+      and texts you the details.
+
+  - id: missed_calls
+    topic: product_overview
+    triggers:
+      - missed call
+      - miss calls
+      - when i'm on a job
+      - can't answer
+      - busy on site
+    answer: >-
+      It answers on the first ring when you can't - on a roof, under a
+      sink, driving. The caller gets a real conversation instead of
+      voicemail, and you get a text with what they need.
+
+  - id: is_it_a_robot
+    topic: ai_questions
+    triggers:
+      - is this a bot
+      - is it a robot
+      - am i talking to ai
+      - is this ai
+      - are you a real person
+      - robotic
+      - are you alive
+      - are you human
+      - are you conscious
+      - you a bot
+    answer: >-
+      Yes - it's an AI voice agent, not a recording and not an offshore
+      call centre. It holds a normal conversation, handles interruptions,
+      and hands off to you when it should.
+
+  - id: does_it_sound_real
+    topic: ai_questions
+    triggers:
+      - sound real
+      - sound human
+      - will my customers know
+      - sound fake
+      - customers hate robots
+    answer: >-
+      It's built to sound natural and to say plainly that it's an
+      assistant if a caller asks. The goal is a caller who gets helped,
+      not a caller who gets fooled.
+
+  - id: what_if_it_cant_answer
+    topic: ai_questions
+    triggers:
+      - what if it doesn't know
+      - gets it wrong
+      - what if it messes up
+      - complicated question
+      - unusual job
+    answer: >-
+      When a call goes outside what it's set up to handle, it takes the
+      details and passes them to you rather than guessing. It's built to
+      escalate rather than improvise.
+
+  - id: setup_effort
+    topic: onboarding
+    triggers:
+      - how long to set up
+      - setup
+      - hard to set up
+      - do i need to install
+      - technical
+      - complicated
+    answer: >-
+      Setup is a phone-number forward plus telling it about your services
+      and coverage area. No app to install and no new hardware.
+
+  - id: free_trial
+    topic: onboarding
+    triggers:
+      - free trial
+      - try it
+      - trial
+      - test it out
+      - try before
+    answer: >-
+      There's a 14-day free trial so you can hear how it handles your own
+      calls before committing.
+
+  - id: keep_my_number
+    topic: onboarding
+    triggers:
+      - my number
+      - change my number
+      - keep my number
+      - new number
+    answer: >-
+      You keep your existing business number. Calls forward to the
+      assistant when you don't pick up.
+
+  - id: booking
+    topic: product_overview
+    triggers:
+      - book
+      - booking
+      - appointment
+      - calendar
+      - schedule
+    answer: >-
+      It captures the job details and books the appointment, then texts
+      you the summary so nothing lives only in the assistant.
+
+  # UNVERIFIED - I could not source these. Fill in or delete before use.
+  - id: coverage_hours
+    topic: availability
+    triggers:
+      - after hours
+      - weekends
+      - 24/7
+      - nights
+      - overnight
+    answer: >-
+      UNVERIFIED - state your real coverage hours here, or delete this
+      entry so the agent escalates the question instead.
+
+  - id: languages
+    topic: availability
+    triggers:
+      - french
+      - spanish
+      - language
+      - bilingual
+    answer: >-
+      UNVERIFIED - state which languages are actually supported, or
+      delete this entry.
+
+# Topics the agent must NEVER answer, even if it thinks it knows. Matching
+# any of these routes the conversation to a human and turns autopilot off.
+#
+# These are here because a wrong answer is expensive in a specific way:
+# a number quoted by your system to a prospect is a number they will hold
+# you to.
+restricted:
+  - id: pricing
+    # Sent immediately, verbatim, when this topic is blocked. Makes NO
+    # factual claim, so it is safe to automate and needs no grounding
+    # check. Keep it that way - the moment a number appears here, this
+    # stops being a template and becomes an unverified claim.
+    holding_reply: >-
+      Good question - I'd rather get you exact numbers than guess. Someone
+      will text you shortly with the details.
+    triggers:
+      - price
+      - pricing
+      - cost
+      - how much
+      - what do you charge
+      - monthly
+      - per month
+      - rate
+      - quote
+      - fee
+      - expensive
+      - cheap
+      - budget
+      - discount
+    reason: asked about pricing
+
+  - id: contract_terms
+    holding_reply: >-
+      Fair thing to ask before committing to anything. Let me get you a
+      straight answer on that - someone will follow up shortly.
+    triggers:
+      - contract
+      - cancel
+      - cancellation
+      - lock in
+      - commitment
+      - refund
+      - terms
+      - sign up now
+      - invoice
+      - billing
+    reason: asked about contract or billing terms
+
+  - id: legal_compliance
+    holding_reply: >-
+      That's worth answering precisely rather than off the cuff. I'll have
+      someone get back to you on it shortly.
+    triggers:
+      - gdpr
+      - pipeda
+      - privacy policy
+      - record calls
+      - recording
+      - data stored
+      - liability
+      - insurance
+      - lawsuit
+    reason: asked a legal, privacy or recording question
+
+  - id: integrations_specifics
+    holding_reply: >-
+      Good question - let me confirm exactly what's supported rather than
+      guess. Someone will follow up shortly.
+    triggers:
+      - jobber
+      - housecall
+      - servicetitan
+      - quickbooks
+      - integrate with
+      - api
+      - zapier
+    reason: asked about a specific integration
+
+# Phrases that mean the prospect wants a person. Deterministic, because
+# "let me talk to someone" should never depend on a model's judgement.
+handoff:
+  holding_reply: >-
+    Of course - I'll have someone from the team reach out to you shortly.
+  triggers:
+    - talk to someone
+    - speak to someone
+    - real person
+    - call me
+    - give me a call
+    - human
+    - sales rep
+    - who is this
+
+# Sent when the agent escalates because the knowledge base doesn't cover
+# the question. Not used for grounding failures: those mean the agent
+# already tried to answer and got caught, and a second automated message
+# compounds rather than helps.
+kb_gap_holding_reply: >-
+  Good question - I want to give you an accurate answer rather than a
+  half-one. Let me check and come back to you shortly.

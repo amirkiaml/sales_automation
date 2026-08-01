@@ -14,22 +14,31 @@ actually escalate) - so that stays human-approved.
 from agents import Agent, Runner
 
 from app.config import settings
+from app.kb.loader import Entry, format_for_prompt, match_restricted, search
 
 INSTRUCTIONS = """
 You are drafting a SUGGESTED reply for a human sales rep at VoiceCaptures
 to review before sending - you are not sending anything yourself.
 
 VoiceCaptures is an AI voice receptionist for home service businesses
-(contractors, plumbers, electricians, HVAC) that answers missed calls,
-books appointments, and texts the business owner the details. 14-day free
-trial.
+(contractors, plumbers, electricians, HVAC).
 
-You'll be given the conversation history and the prospect's latest
-message. Draft a reply that:
+You'll be given knowledge base entries, the conversation history, and the
+prospect's latest message.
+
+[Grounding Rule - MANDATORY]
+State facts ONLY from the knowledge base entries provided. Rephrase
+freely; do not add. No number, timeframe, guarantee, integration or
+capability that isn't in the entries. If the entries don't cover their
+question, say so in the draft - write something like "[NOT IN KB: they
+asked about X]" so the human reviewing knows to fill it in, rather than
+inventing an answer that reads as confident and ships because it looked
+fine at a glance.
+
+Draft a reply that:
 - Sounds like a real person texting - short, direct, no corporate filler.
 - Under 320 characters.
-- Answers their question if they asked one, using only what you're told
-  about VoiceCaptures - never invent pricing or features.
+- Answers their question if the entries cover it.
 - Matches the tone of the conversation so far.
 
 Output ONLY the suggested SMS text, nothing else - no preamble, no
@@ -43,13 +52,16 @@ draft_reply_agent = Agent(
 )
 
 
-def build_draft_prompt(prospect: dict, history: list[dict], new_message: str) -> str:
+def build_draft_prompt(
+    prospect: dict, history: list[dict], new_message: str, kb_entries: list[Entry] | None = None
+) -> str:
     transcript = "\n".join(
         f"{'Prospect' if m['direction'] == 'inbound' else 'VoiceCaptures'}: {m['body']}"
         for m in history
     )
     return (
         f"Prospect business: {prospect.get('name')} ({prospect.get('primary_type') or 'home service business'})\n\n"
+        f"Knowledge base entries retrieved for their message:\n{format_for_prompt(kb_entries or [])}\n\n"
         f"Conversation so far:\n{transcript or '(this is their first reply)'}\n\n"
         f"Their new message: {new_message}\n\n"
         f"Draft the suggested reply now."
@@ -57,5 +69,15 @@ def build_draft_prompt(prospect: dict, history: list[dict], new_message: str) ->
 
 
 async def draft_reply(prospect: dict, history: list[dict], new_message: str) -> str:
-    result = await Runner.run(draft_reply_agent, build_draft_prompt(prospect, history, new_message))
+    """Draft a reply for human review, grounded in the knowledge base.
+
+    Uses the same KB as the autopilot agent. Without this the review path
+    would be the LESS constrained of the two, which is backwards - most
+    messages go through review, so it is where an invented fact is most
+    likely to actually reach someone.
+    """
+    entries = search(new_message)
+    result = await Runner.run(
+        draft_reply_agent, build_draft_prompt(prospect, history, new_message, kb_entries=entries)
+    )
     return result.final_output
