@@ -20,6 +20,7 @@ import sys
 from pathlib import Path
 
 from app.db.client import upsert_prospect
+from app.phone import InvalidPhoneError, normalize_phone  # noqa: F401
 
 
 def fix_mojibake(text: str) -> str:
@@ -33,33 +34,9 @@ def fix_mojibake(text: str) -> str:
         return text
 
 
-class InvalidPhoneError(ValueError):
-    """Raised when a number can't be coerced into plausible E.164."""
-
-
-def normalize_phone(raw: str) -> str:
-    """'+1 647-251-8320' -> '+16472518320' (E.164, what Twilio expects).
-
-    The previous version treated ANY leading '+' as proof the number was
-    already complete E.164 and returned it untouched. So '+416 822 6186'
-    - a NANP number typed with a plus but no country code - became
-    '+4168226186', which Twilio rejects with error 21211 because it reads
-    the leading 4 as a country code. Silent corruption on CSV import,
-    and a 500 at send time.
-
-    Now: strip to digits, then decide by shape rather than by whether a
-    '+' happened to be present.
-      10 digits            -> NANP, prepend +1
-      11 digits w/ lead 1  -> NANP, prepend +
-      7-15 digits          -> assume already has a country code
-      anything else        -> InvalidPhoneError
-    """
-    if raw is None:
-        raise InvalidPhoneError("empty")
-
-    digits = re.sub(r"\D", "", str(raw))
-    if not digits:
-        raise InvalidPhoneError(str(raw))
+# normalize_phone and InvalidPhoneError now live in app/phone.py so they
+# can be imported (and tested) without pulling in the Supabase client.
+# Re-exported here because callers already import them from this module.
 
     if len(digits) == 10:
         return "+1" + digits
