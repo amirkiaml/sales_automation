@@ -206,6 +206,66 @@
   </div>
 </div>
 
+
+  <div class="panel">
+    <details>
+      <summary style="cursor:pointer;font-weight:600;">
+        Developer view — agent &amp; guardrail trace
+        {% if agent_traces %}<span style="font-weight:400;color:var(--text-muted);">({{ agent_traces | length }} runs)</span>{% endif %}
+      </summary>
+
+      {% if not agent_traces %}
+      <p class="lede" style="margin-top:10px;">
+        No traces recorded yet. Runs appear here after you generate a reply
+        or autopilot handles an inbound message. If this stays empty after
+        a run, migration 008 hasn't been applied in Supabase.
+      </p>
+      {% else %}
+      <p class="lede" style="margin-top:10px;">
+        Newest first. Steps that produced no message — a guardrail block —
+        are the ones worth reading; they leave no trace in the conversation
+        above.
+      </p>
+
+      {% for tr in agent_traces %}
+      <div style="border:1px solid var(--border,#ddd);border-radius:6px;padding:10px 12px;margin-bottom:12px;">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);margin-bottom:8px;">
+          {{ tr.entry_point }} ·
+          <strong style="color:{% if tr.outcome == 'sent' %}#2f855a{% elif tr.outcome and tr.outcome.startswith('blocked') %}#c0392b{% elif tr.outcome == 'escalated' %}#b7791f{% else %}inherit{% endif %};">{{ tr.outcome }}</strong>
+          {% if tr.duration_ms %} · {{ tr.duration_ms }}ms{% endif %}
+          · {{ tr.created_at }}
+        </div>
+        {% if tr.trigger_text %}
+        <div style="font-size:12px;margin-bottom:8px;"><em>Triggered by:</em> "{{ tr.trigger_text }}"</div>
+        {% endif %}
+
+        <table style="width:100%;font-size:12px;">
+          {% for step in tr.steps %}
+          <tr>
+            <td style="width:22px;vertical-align:top;padding:3px 0;">
+              {% if step.status == 'ok' %}<span style="color:#2f855a;">●</span>
+              {% elif step.status == 'blocked' %}<span style="color:#c0392b;">■</span>
+              {% elif step.status == 'error' %}<span style="color:#c0392b;">✕</span>
+              {% else %}<span style="color:var(--text-muted);">○</span>{% endif %}
+            </td>
+            <td style="vertical-align:top;padding:3px 8px 3px 0;font-family:'JetBrains Mono',monospace;white-space:nowrap;">
+              {{ step.name }}
+            </td>
+            <td style="vertical-align:top;padding:3px 0;color:var(--text-muted);">
+              {% for k, v in step.items() %}{% if k not in ('name','status','at_ms') %}<span style="margin-right:10px;"><em>{{ k }}:</em> {{ v }}</span>{% endif %}{% endfor %}
+            </td>
+            <td style="vertical-align:top;padding:3px 0;text-align:right;color:var(--text-muted);white-space:nowrap;">
+              {{ step.at_ms }}ms
+            </td>
+          </tr>
+          {% endfor %}
+        </table>
+      </div>
+      {% endfor %}
+      {% endif %}
+    </details>
+  </div>
+
 <script>
   // Auto-refresh so inbound replies appear without a manual reload.
   //

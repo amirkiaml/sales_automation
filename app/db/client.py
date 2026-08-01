@@ -169,6 +169,35 @@ def delete_prospect(prospect_id: str) -> None:
     get_client().table("prospects").delete().eq("id", prospect_id).execute()
 
 
+def save_trace(
+    prospect_id: str, entry_point: str, trigger_text: str, outcome: str,
+    steps: list[dict[str, Any]], duration_ms: int,
+) -> None:
+    get_client().table("agent_traces").insert({
+        "prospect_id": prospect_id, "entry_point": entry_point,
+        "trigger_text": trigger_text[:500], "outcome": outcome,
+        "steps": steps, "duration_ms": duration_ms,
+    }).execute()
+
+
+def get_traces_for_prospect(prospect_id: str, limit: int = 20) -> list[dict[str, Any]]:
+    """Newest first. Returns [] if the table doesn't exist yet.
+
+    Tolerates a missing table on purpose: tracing is a debugging aid, and
+    an operator who hasn't run migration 008 should get a console without
+    traces rather than a 500 on every prospect page.
+    """
+    try:
+        result = (
+            get_client().table("agent_traces").select("*")
+            .eq("prospect_id", prospect_id)
+            .order("created_at", desc=True).limit(limit).execute()
+        )
+        return result.data or []
+    except APIError:
+        return []
+
+
 def list_prospects_page(
     status: Optional[str] = None, query: Optional[str] = None,
     page: int = 1, page_size: int = 20,

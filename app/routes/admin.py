@@ -21,11 +21,13 @@ from app.db.client import (
     clear_pending_reply, get_conversation_history, get_pipeline_stats, upsert_prospect, set_pending_reply,
     set_autopilot, update_prospect_status, delete_messages_for_prospect, set_history_cleared_at,
     update_prospect, DuplicatePhoneError, list_prospects_sharing_phone,
-    delete_prospect,
+    delete_prospect, get_traces_for_prospect,
 )
 from app.db.import_csv import import_rows, normalize_phone, InvalidPhoneError
 from app.agents.cold_outreach import run_cold_outreach_for_prospect
 from app.agents.draft_reply_agent import draft_reply
+from app.kb.loader import match_restricted, search as kb_search
+from app.observability import Trace
 from app.tools.twilio_sms import send_sms, SendFailed
 from app.tools.rate_limit import check_and_record
 from app.poll_inbound import poll_once, poll_prospect
@@ -48,6 +50,7 @@ def _detail_with_error(request: Request, prospect_id: str, error: str):
             "messages": get_conversation_history(prospect_id, limit=100),
             "new_count": 0, "trace": None, "error": error,
             "sharing": list_prospects_sharing_phone(p["phone"], p["id"]) if p else [],
+            "agent_traces": get_traces_for_prospect(prospect_id),
         },
     )
 
@@ -230,16 +233,35 @@ async def generate_reply(request: Request, prospect_id: str):
         return RedirectResponse(url="/admin", status_code=303)
 
     history = get_conversation_history(prospect_id, limit=20)
+    tr = Trace(prospect_id, entry_point="generate")
 
     if not history:
         result = await run_cold_outreach_for_prospect(prospect, dry_run=True)
         suggested = result["sent_text"]
         context = f"First outreach — angle: {result['hook_angle']} — picked {result['winner']} ({result['winner_reason']})"
+        tr.step("hook_agent", status="ok", angle=result.get("hook_angle"))
+        tr.step("drafting_agents", status="ok", note="3 personas drafted in parallel")
+        tr.step("picker_agent", status="ok", winner=result.get("winner"),
+                reason=result.get("winner_reason"))
+        tr.finish("drafted_cold")
     else:
         last_inbound = next((m["body"] for m in reversed(history) if m["direction"] == "inbound"), None)
         prompt_message = last_inbound or "(No reply from them yet - draft a natural, low-pressure follow-up.)"
         suggested = await draft_reply(prospect, history=history, new_message=prompt_message)
         context = prompt_message
+        # Flag restricted topics for the reviewer. Autopilot refuses these
+        # outright; on the review path a human is allowed to answer, but
+        # should know that's what they're doing.
+        restricted = match_restricted(prompt_message)
+        tr.step("restricted_check", status="blocked" if restricted else "ok",
+                layer="keywords", reason=restricted.reason if restricted else "")
+        tr.step("kb_retrieval", status="ok",
+                matched=[e.id for e in kb_search(prompt_message)])
+        tr.step("draft_reply_agent", status="ok", agent="Draft Reply Agent",
+                draft=suggested[:300])
+        if restricted:
+            context = f"[RESTRICTED: {restricted.reason} - verify before sending] {context}"
+        tr.finish("drafted_reply")
 
     set_pending_reply(prospect_id, pending_reply=suggested, context=context)
     return RedirectResponse(url=f"/admin/prospects/{prospect_id}", status_code=303)
@@ -408,6 +430,7 @@ async def prospect_detail(request: Request, prospect_id: str):
             "prospect": prospect, "messages": messages,
             "new_count": new_count, "trace": trace,
             "sharing": list_prospects_sharing_phone(prospect["phone"], prospect["id"]),
+            "agent_traces": get_traces_for_prospect(prospect_id),
         },
     )
 
