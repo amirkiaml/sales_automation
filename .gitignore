@@ -8,3 +8,4 @@ venv/
 .pytest_cache/
 .ipynb_checkpoints/
 *.csv
+sales_automation/

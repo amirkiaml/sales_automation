@@ -31,6 +31,13 @@ entries:
       - what is this
       - never heard of you
       - what's this about
+      - how does it work
+      - how does this work
+      - how it works
+      - how does that work
+      - tell me more
+      - explain
+      - what is it
     answer: >-
       VoiceCaptures is an AI voice receptionist built for home service
       businesses - contractors, plumbers, electricians, HVAC. It answers
@@ -45,6 +52,8 @@ entries:
       - when i'm on a job
       - can't answer
       - busy on site
+      - how do you answer
+      - what happens when
     answer: >-
       It answers on the first ring when you can't - on a roof, under a
       sink, driving. The caller gets a real conversation instead of
@@ -103,6 +112,10 @@ entries:
       - do i need to install
       - technical
       - complicated
+      - how do i start
+      - how do i sign up
+      - what do i need to do
+      - getting started
     answer: >-
       Setup is a phone-number forward plus telling it about your services
       and coverage area. No app to install and no new hardware.
