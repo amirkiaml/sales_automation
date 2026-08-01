@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="660" viewBox="0 0 680 660" role="img">
+<title>Inbound reply, autopilot path with guardrails</title>
+<desc>Scope guardrail with keyword and classifier layers, knowledge base retrieval, SDR agent, grounding guardrail, then send. Blocked messages get a holding reply and go to review.</desc>
+<style>
+.t{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:14px;font-weight:500}
+.ts{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:12px}
+.arr{stroke:#888780;stroke-width:1.5;fill:none}
+</style>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#888780" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+
+<rect x="220" y="30" width="200" height="56" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.5"/>
+<text class="t" x="320" y="50" text-anchor="middle" dominant-baseline="central" fill="#2C2C2A">Stop check, triage</text>
+<text class="ts" x="320" y="68" text-anchor="middle" dominant-baseline="central" fill="#5F5E5A">same as review path</text>
+<line x1="320" y1="86" x2="320" y2="120" class="arr" marker-end="url(#arrow)"/>
+
+<rect x="220" y="126" width="200" height="56" rx="8" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.5"/>
+<text class="t" x="320" y="146" text-anchor="middle" dominant-baseline="central" fill="#412402">Scope, keywords</text>
+<text class="ts" x="320" y="164" text-anchor="middle" dominant-baseline="central" fill="#854F0B">certain, no model</text>
+<line x1="320" y1="182" x2="320" y2="216" class="arr" marker-end="url(#arrow)"/>
+
+<rect x="220" y="222" width="200" height="56" rx="8" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.5"/>
+<text class="t" x="320" y="242" text-anchor="middle" dominant-baseline="central" fill="#412402">Scope, classifier</text>
+<text class="ts" x="320" y="260" text-anchor="middle" dominant-baseline="central" fill="#854F0B">catches paraphrase</text>
+
+<path d="M420 154 L530 154 L530 306" class="arr" marker-end="url(#arrow)"/>
+<path d="M420 250 L530 250" class="arr" marker-end="url(#arrow)"/>
+<rect x="450" y="312" width="180" height="56" rx="8" fill="#FCEBEB" stroke="#A32D2D" stroke-width="0.5"/>
+<text class="t" x="540" y="332" text-anchor="middle" dominant-baseline="central" fill="#501313">Holding reply</text>
+<text class="ts" x="540" y="350" text-anchor="middle" dominant-baseline="central" fill="#A32D2D">fixed text, no claims</text>
+<line x1="540" y1="368" x2="540" y2="402" class="arr" marker-end="url(#arrow)"/>
+<rect x="450" y="408" width="180" height="56" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+<text class="t" x="540" y="428" text-anchor="middle" dominant-baseline="central" fill="#042C53">Review queue</text>
+<text class="ts" x="540" y="446" text-anchor="middle" dominant-baseline="central" fill="#185FA5">with the reason</text>
+
+<line x1="320" y1="278" x2="320" y2="312" class="arr" marker-end="url(#arrow)"/>
+<rect x="220" y="318" width="200" height="56" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+<text class="t" x="320" y="338" text-anchor="middle" dominant-baseline="central" fill="#04342C">KB retrieval</text>
+<text class="ts" x="320" y="356" text-anchor="middle" dominant-baseline="central" fill="#0F6E56">empty means assert nothing</text>
+<line x1="320" y1="374" x2="320" y2="408" class="arr" marker-end="url(#arrow)"/>
+
+<rect x="220" y="414" width="200" height="56" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+<text class="t" x="320" y="434" text-anchor="middle" dominant-baseline="central" fill="#26215C">SDR agent</text>
+<text class="ts" x="320" y="452" text-anchor="middle" dominant-baseline="central" fill="#534AB7">no tools, returns text</text>
+<line x1="320" y1="470" x2="320" y2="504" class="arr" marker-end="url(#arrow)"/>
+
+<rect x="220" y="510" width="200" height="56" rx="8" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.5"/>
+<text class="t" x="320" y="530" text-anchor="middle" dominant-baseline="central" fill="#412402">Grounding check</text>
+<text class="ts" x="320" y="548" text-anchor="middle" dominant-baseline="central" fill="#854F0B">claims vs retrieved</text>
+<path d="M420 538 L530 538 L530 470" class="arr" marker-end="url(#arrow)"/>
+
+<line x1="320" y1="566" x2="320" y2="590" class="arr" marker-end="url(#arrow)"/>
+<rect x="220" y="596" width="200" height="40" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.5"/>
+<text class="t" x="320" y="616" text-anchor="middle" dominant-baseline="central" fill="#2C2C2A">Twilio send</text>
+
+<text class="ts" x="120" y="620" text-anchor="middle" fill="#5F5E5A">Amber = guardrail</text>
+</svg>

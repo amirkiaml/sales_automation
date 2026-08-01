@@ -22,7 +22,7 @@
   <h1>Review queue</h1>
   <p class="lede">Every real reply passes through here before it sends. Edit the text inline if you want to change anything - it sends exactly what's in the box.</p>
 
-  <img src="/static/images/real-pipeline-flow.svg" alt="Real pipeline: poll Twilio, triage agent classifies, draft agent suggests a reply, human reviews, Twilio sends" style="width:100%;height:auto;margin-bottom:24px;">
+  <img src="/static/images/review-path.svg" alt="Review path: poll Twilio, stop check, triage agent, KB retrieval, draft agent, human review, then send" style="width:100%;height:auto;margin-bottom:24px;">
 
   {% if polled %}
   <div class="error-banner" style="background:var(--decision-bg);color:var(--decision-text);">

@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="620" viewBox="0 0 680 620" role="img">
+<title>Inbound reply, human review path</title>
+<desc>Poll Twilio, hard-coded stop check, triage agent, knowledge base retrieval, draft agent, human review, then send.</desc>
+<style>
+.t{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:14px;font-weight:500}
+.ts{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:12px}
+.arr{stroke:#888780;stroke-width:1.5;fill:none}
+</style>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#888780" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+
+<rect x="240" y="30" width="200" height="56" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.5"/>
+<text class="t" x="340" y="50" text-anchor="middle" dominant-baseline="central" fill="#2C2C2A">Poll Twilio</text>
+<text class="ts" x="340" y="68" text-anchor="middle" dominant-baseline="central" fill="#5F5E5A">or inbound webhook</text>
+<line x1="340" y1="86" x2="340" y2="126" class="arr" marker-end="url(#arrow)"/>
+
+<rect x="240" y="132" width="200" height="56" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.5"/>
+<text class="t" x="340" y="152" text-anchor="middle" dominant-baseline="central" fill="#2C2C2A">Stop check</text>
+<text class="ts" x="340" y="170" text-anchor="middle" dominant-baseline="central" fill="#5F5E5A">keywords, no model</text>
+
+<path d="M240 160 L140 160 L140 216" class="arr" marker-end="url(#arrow)"/>
+<rect x="50" y="222" width="180" height="56" rx="8" fill="#FCEBEB" stroke="#A32D2D" stroke-width="0.5"/>
+<text class="t" x="140" y="242" text-anchor="middle" dominant-baseline="central" fill="#501313">Opt out</text>
+<text class="ts" x="140" y="260" text-anchor="middle" dominant-baseline="central" fill="#A32D2D">suppression list</text>
+
+<line x1="340" y1="188" x2="340" y2="222" class="arr" marker-end="url(#arrow)"/>
+<rect x="240" y="222" width="200" height="56" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+<text class="t" x="340" y="242" text-anchor="middle" dominant-baseline="central" fill="#26215C">Triage agent</text>
+<text class="ts" x="340" y="260" text-anchor="middle" dominant-baseline="central" fill="#534AB7">classifies intent</text>
+<line x1="340" y1="278" x2="340" y2="312" class="arr" marker-end="url(#arrow)"/>
+
+<rect x="240" y="318" width="200" height="56" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+<text class="t" x="340" y="338" text-anchor="middle" dominant-baseline="central" fill="#04342C">KB retrieval</text>
+<text class="ts" x="340" y="356" text-anchor="middle" dominant-baseline="central" fill="#0F6E56">lexical, may return none</text>
+<line x1="340" y1="374" x2="340" y2="408" class="arr" marker-end="url(#arrow)"/>
+
+<rect x="240" y="414" width="200" height="56" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+<text class="t" x="340" y="434" text-anchor="middle" dominant-baseline="central" fill="#26215C">Draft agent</text>
+<text class="ts" x="340" y="452" text-anchor="middle" dominant-baseline="central" fill="#534AB7">grounded in retrieved</text>
+<line x1="340" y1="470" x2="340" y2="504" class="arr" marker-end="url(#arrow)"/>
+
+<rect x="240" y="510" width="200" height="56" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+<text class="t" x="340" y="530" text-anchor="middle" dominant-baseline="central" fill="#042C53">Human review</text>
+<text class="ts" x="340" y="548" text-anchor="middle" dominant-baseline="central" fill="#185FA5">approve, edit, discard</text>
+
+<path d="M440 538 L540 538 L540 442" class="arr" marker-end="url(#arrow)"/>
+<rect x="470" y="386" width="150" height="56" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.5"/>
+<text class="t" x="545" y="406" text-anchor="middle" dominant-baseline="central" fill="#2C2C2A">Twilio send</text>
+<text class="ts" x="545" y="424" text-anchor="middle" dominant-baseline="central" fill="#5F5E5A">after approval</text>
+
+<text class="ts" x="340" y="596" text-anchor="middle" fill="#5F5E5A">Purple = LLM agent · teal = retrieval · blue = human · gray = code</text>
+</svg>
