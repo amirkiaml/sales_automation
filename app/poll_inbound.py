@@ -40,7 +40,8 @@ from app.db.client import (
 )
 from app.agents.triage_agent import classify
 from app.agents.draft_reply_agent import draft_reply
-from app.agents.sdr_agent import sdr_agent, build_conversation_prompt
+from app.agents.autopilot import run_autopilot
+from app.observability import Trace
 
 STOP_KEYWORDS = {"stop", "stopall", "unsubscribe", "cancel", "end", "quit"}
 LOOKBACK_MINUTES_IF_NO_HISTORY = 60  # first-ever run: only look back this far
@@ -141,9 +142,16 @@ async def _process_message(msg, trace: list) -> None:
     if prospect.get("autopilot"):
         _step(trace, "Autopilot active", "SDR agent will reply and send on its own for this contact")
         with agent_trace(f"Autopilot reply - {prospect['name']}"):
-            await Runner.run(sdr_agent, build_conversation_prompt(prospect, history, body))
+            outcome = await run_autopilot(prospect, history, body)
+            print(f"    autopilot: {outcome.action}"
+                  + (f" ({outcome.detail})" if outcome.detail else ""))
         _step(trace, "Autopilot reply sent", "no human review needed - see conversation for what was sent")
         return
+
+    skip = Trace(prospect["id"], entry_point="autopilot", trigger_text=body)
+    skip.step("autopilot_gate", status="skipped",
+              reason="autopilot flag is off for this contact")
+    skip.finish("skipped_flag_off")
 
     _step(trace, "Draft agent running", "reading full conversation history, writing a suggested reply")
     suggested = await draft_reply(prospect, history, body)

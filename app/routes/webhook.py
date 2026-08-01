@@ -21,13 +21,16 @@ from app.db.client import (
     upsert_prospect,
     log_message,
     update_prospect_status,
+    set_pending_reply,
     add_suppression,
     touch_last_reply,
     get_conversation_history,
     update_message_status,
 )
 from app.agents.triage_agent import classify
-from app.agents.sdr_agent import sdr_agent, build_conversation_prompt
+from app.agents.autopilot import run_autopilot
+from app.agents.draft_reply_agent import draft_reply
+from app.observability import Trace
 
 logger = logging.getLogger("webhook")
 router = APIRouter(prefix="/webhooks/twilio", tags=["twilio"])
@@ -108,8 +111,28 @@ async def inbound_sms(request: Request):
         }
         update_prospect_status(prospect["id"], status=status_map[triage.intent])
 
-        prompt = build_conversation_prompt(prospect, history, body)
-        await Runner.run(sdr_agent, prompt)
+        # Gate on the per-contact flag. This check was missing entirely:
+        # the webhook ran autopilot for EVERY prospect regardless of the
+        # toggle, which is invisible on localhost (Twilio can't reach it)
+        # and would auto-reply to everyone the moment this is deployed.
+        if prospect.get("autopilot"):
+            outcome = await run_autopilot(prospect, history, body)
+            logger.info(
+                "Autopilot %s for %s%s",
+                outcome.action, prospect.get("name"),
+                f" ({outcome.detail})" if outcome.detail else "",
+            )
+        else:
+            # Recorded rather than silent: a skipped run and a run that
+            # never happened otherwise look identical in the console.
+            skip = Trace(prospect["id"], entry_point="autopilot", trigger_text=body)
+            skip.step("autopilot_gate", status="skipped",
+                      reason="autopilot flag is off for this contact")
+            skip.finish("skipped_flag_off")
+
+            suggested = await draft_reply(prospect, history, body)
+            set_pending_reply(prospect["id"], pending_reply=suggested, context=body)
+            logger.info("Queued draft for review (autopilot off): %s", prospect.get("name"))
 
     return EMPTY_TWIML
 
