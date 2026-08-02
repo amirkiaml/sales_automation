@@ -41,7 +41,7 @@ Return the winning style label and a one-phrase reason.
 picker_agent = Agent(
     name="SMS Picker",
     instructions=INSTRUCTIONS,
-    model=settings.AGENT_MODEL,
+    model=settings.DRAFTING_MODEL,
     output_type=PickerDecision,
 )
 

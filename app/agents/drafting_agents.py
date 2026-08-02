@@ -15,7 +15,9 @@ plumbers, electricians, HVAC, etc.) so they never miss a call that could
 have been a job.
 
 You write cold outreach text messages, not emails. Rules:
-- Under 320 characters total (about 2 SMS segments).
+- Under 120 characters for your message. The 36-character compliance
+  line below is appended on top, and the total must stay under 160 -
+  that is one SMS segment. Anything over 160 is billed as two.
 - No greeting like "Dear" or "Hi there" - this is a text message, get to
   the point.
 - Personalize using the specific angle and supporting fact you're given -
@@ -24,24 +26,27 @@ You write cold outreach text messages, not emails. Rules:
 - Always end with exactly this compliance line, verbatim:
   "Reply YES for a demo, NO to opt-out."
 - Plain text only, no markdown, no emoji.
+- Straight apostrophes only ('), never curly ones. A single curly
+  apostrophe switches the message to UCS-2 encoding, which drops the
+  segment size from 160 characters to 70 and can double the bill again.
 """
 
 sms_agent_professional = Agent(
     name="Professional SMS Agent",
     instructions=INTRO + "\nYour style is professional, credible, and direct.",
-    model=settings.AGENT_MODEL,
+    model=settings.DRAFTING_MODEL,
 )
 
 sms_agent_witty = Agent(
     name="Witty SMS Agent",
     instructions=INTRO + "\nYour style is warm and a little witty, without undermining credibility.",
-    model=settings.AGENT_MODEL,
+    model=settings.DRAFTING_MODEL,
 )
 
 sms_agent_executive = Agent(
     name="Executive SMS Agent",
     instructions=INTRO + "\nYour style is extremely concise, like a busy executive texting a peer. Shortest of the three.",
-    model=settings.AGENT_MODEL,
+    model=settings.DRAFTING_MODEL,
 )
 
 DRAFTING_AGENTS = {

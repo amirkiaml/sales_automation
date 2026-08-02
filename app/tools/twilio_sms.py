@@ -50,10 +50,59 @@ def get_twilio_client() -> Client:
     return _twilio_client
 
 
+# Characters models emit that are not in the GSM-7 alphabet. Any one of
+# them switches the whole message to UCS-2, which drops the segment size
+# from 160 characters to 70 - a 150-character message with one curly
+# apostrophe bills as THREE segments instead of one.
+#
+# This is in code rather than the prompt because the prompt already says
+# not to use them and the model does it anyway. Same reason the compliance
+# footer is appended here: anything with a cost attached should not depend
+# on an instruction being followed.
+_GSM_SUBSTITUTIONS = {
+    "\u2018": "'", "\u2019": "'", "\u201a": "'", "\u201b": "'",   # curly single quotes
+    "\u201c": '"', "\u201d": '"', "\u201e": '"',                  # curly double quotes
+    "\u2013": "-", "\u2014": "-", "\u2212": "-",                  # en/em dash, minus
+    "\u2026": "...",                                              # ellipsis
+    "\u00a0": " ", "\u2009": " ", "\u200a": " ", "\u202f": " ",    # exotic spaces
+    "\u2022": "-", "\u00b7": "-",                                 # bullets
+    "\u2032": "'", "\u2033": '"',                                 # primes
+    "\u2192": "->", "\u2190": "<-",                               # arrows
+    "\u00ab": '"', "\u00bb": '"',                                 # guillemets
+    "\u0060": "'", "\u00b4": "'",                                 # backtick, acute
+}
+
+
+def sanitize_for_sms(text: str) -> str:
+    """Make a draft safe and cheap to send.
+
+    Two jobs:
+      1. Replace non-GSM punctuation with ASCII equivalents, so one curly
+         apostrophe doesn't triple the segment count.
+      2. Collapse newlines and strip wrapping quotes. Models occasionally
+         return their message wrapped in quotation marks or split across
+         lines, and both go out verbatim otherwise.
+    """
+    for bad, good in _GSM_SUBSTITUTIONS.items():
+        text = text.replace(bad, good)
+
+    text = " ".join(text.split())          # collapse newlines and runs of spaces
+
+    # A model returning "..." around the whole message is common enough to
+    # be worth handling, but only strip when BOTH ends match - a message
+    # that legitimately ends in a quote stays intact.
+    if len(text) >= 2 and text[0] == text[-1] and text[0] in "\"'":
+        text = text[1:-1].strip()
+
+    return text
+
+
 def send_sms(to_phone: str, body: str, prospect_id: str, agent_name: str = "") -> dict:
     """Send an SMS via Twilio and log it. Returns Twilio's response info."""
     # Checked here rather than at each call site so there is exactly one
     # place a message can leave the system, and it is guarded.
+    body = sanitize_for_sms(body)
+
     if is_suppressed(to_phone):
         raise SendFailed(
             f"{to_phone} is on the suppression list (opted out). Not sending."
