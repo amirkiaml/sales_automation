@@ -13,11 +13,22 @@ class Settings:
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
     TRIAGE_MODEL: str = os.getenv("TRIAGE_MODEL", "gpt-4o-mini")
     AGENT_MODEL: str = os.getenv("AGENT_MODEL", "gpt-4o")
+    # Cold outreach: hook, three drafters, picker. Writing a 120-character
+    # cold text is not a frontier-model task, and running five gpt-4o calls
+    # per prospect burned most of the 30k TPM budget - a 50-prospect batch
+    # lost one lead to a 429. Override if the drafts get noticeably worse.
+    DRAFTING_MODEL: str = os.getenv("DRAFTING_MODEL", "gpt-4o-mini")
 
     # Twilio
     TWILIO_ACCOUNT_SID: str = os.getenv("TWILIO_ACCOUNT_SID", "")
     TWILIO_AUTH_TOKEN: str = os.getenv("TWILIO_AUTH_TOKEN", "")
     TWILIO_FROM_NUMBER: str = os.getenv("TWILIO_FROM_NUMBER", "")
+    # USD per SMS *segment* (not per message). Twilio list price for
+    # US/Canada as of Aug 2026. This is a FLOOR: Canadian carrier fees are
+    # billed on top and vary by destination carrier, and failed messages
+    # add a $0.001 processing fee. Check Console > Billing for your real
+    # effective rate and override here.
+    TWILIO_COST_PER_SEGMENT: float = float(os.getenv("TWILIO_COST_PER_SEGMENT", "0.0083"))
     TWILIO_MESSAGING_SERVICE_SID: str = os.getenv("TWILIO_MESSAGING_SERVICE_SID", "")
 
     # Supabase (new sb_publishable_/sb_secret_ key system, not the legacy
