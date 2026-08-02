@@ -41,15 +41,7 @@ from app.config import settings
 from app.db.client import list_prospects
 from app.tools.twilio_sms import sanitize_for_sms
 
-# USD per 1M tokens. These are hardcoded and WILL go stale - a wrong number
-# here is worse than none because it looks authoritative. Check current
-# rates at openai.com/api/pricing before quoting anything from this script.
-PRICING = {
-    "gpt-4o-mini": {"in": 0.15, "out": 0.60},
-    "gpt-4o": {"in": 2.50, "out": 10.00},
-    "gpt-4.1-mini": {"in": 0.40, "out": 1.60},
-    "gpt-4.1": {"in": 2.00, "out": 8.00},
-}
+from app.pricing import cost_usd as _price
 
 # Per-task bucket. asyncio copies the context when it creates a task, so
 # concurrent prospects don't write into each other's totals.
@@ -82,15 +74,8 @@ Runner.run = _run_with_usage
 
 
 def cost_usd(calls: list[dict]) -> float:
-    """Best-effort cost. Unknown models fall back to the configured agent model."""
-    total = 0.0
-    for c in calls:
-        rates = PRICING.get(c["model"]) or PRICING.get(settings.AGENT_MODEL)
-        if not rates:
-            continue
-        total += c["input"] / 1_000_000 * rates["in"]
-        total += c["output"] / 1_000_000 * rates["out"]
-    return total
+    """Sum cost across one prospect's calls, using the shared price table."""
+    return sum(_price(c["model"], c["input"], c["output"]) for c in calls)
 
 
 def has_personalization(p: dict) -> bool:
@@ -159,10 +144,28 @@ async def measure_one(prospect: dict) -> dict:
     }
 
 
-async def run(limit: int, out_path: str | None, concurrency: int) -> None:
-    prospects = list_prospects(status="new", limit=limit)
+async def run(limit: int, out_path: str | None, concurrency: int,
+              where: str = "") -> None:
+    # Fetch wide, then filter, because list_prospects has no location
+    # predicate and orders by updated_at. Relying on that ordering to
+    # separate a freshly imported batch from an older one works right up
+    # until it doesn't, and the failure mode is measuring - or worse,
+    # eventually messaging - the wrong list.
+    prospects = list_prospects(status="new", limit=2000)
+
+    if where:
+        needle = where.lower()
+        prospects = [
+            p for p in prospects
+            if needle in (p.get("address") or "").lower()
+            or needle in (p.get("neighborhood") or "").lower()
+        ]
+        print(f"Filtered to {len(prospects)} prospects matching {where!r}")
+
+    prospects = prospects[:limit]
+
     if not prospects:
-        print("No prospects with status='new'. Import the leads CSV first.")
+        print("No matching prospects with status='new'.")
         return
 
     print(f"Measuring {len(prospects)} prospects (dry run, nothing sent)...\n")
@@ -251,7 +254,7 @@ async def run(limit: int, out_path: str | None, concurrency: int) -> None:
         print(f"  per prospect            {(tot_cost + sms_total) / len(ok):>8.4f}")
         print(f"  extrapolated to 484     {(tot_cost + sms_total) / len(ok) * 484:>8.2f}")
         print("  ^ Twilio figure is a FLOOR: carrier fees are billed on top.")
-        print("  ^ OpenAI rates are hardcoded in PRICING and may be stale.\n")
+        print("  ^ OpenAI rates are hardcoded in app/pricing.py and may be stale.\n")
 
     if out_path:
         path = Path(out_path)
@@ -268,5 +271,8 @@ if __name__ == "__main__":
     parser.add_argument("--limit", type=int, default=25)
     parser.add_argument("--out", type=str, default="", help="CSV path for per-prospect rows")
     parser.add_argument("--concurrency", type=int, default=3)
+    parser.add_argument("--where", default="",
+                        help="substring match on address or neighborhood, "
+                             "e.g. BC, Vancouver, 'North York'")
     args = parser.parse_args()
-    asyncio.run(run(args.limit, args.out or None, args.concurrency))
+    asyncio.run(run(args.limit, args.out or None, args.concurrency, args.where))
