@@ -8,6 +8,7 @@ CLI tools if you'd rather use those.
 """
 import csv
 import io
+from datetime import datetime, timezone
 import json
 import secrets
 
@@ -38,6 +39,28 @@ templates = Jinja2Templates(directory="app/templates")
 
 def _is_logged_in(request: Request) -> bool:
     return bool(request.session.get("is_admin"))
+
+
+def _mark_contacted(prospect: dict) -> None:
+    """Record that a message went out, from any send path.
+
+    Only run_cold_outreach_for_prospect did this, so anything sent from
+    the console left the prospect at status='new' - which meant it stayed
+    in scope for the next cold batch and could receive a second first
+    message. Cosmetic-looking, but the failure mode is texting someone
+    twice.
+
+    Only advances from 'new'. A prospect who has already replied should
+    not be walked backwards to 'contacted' because the operator sent a
+    follow-up.
+    """
+    if prospect.get("status") != "new":
+        return
+    update_prospect_status(
+        prospect["id"],
+        status="contacted",
+        last_contacted_at=datetime.now(timezone.utc).isoformat(),
+    )
 
 
 def _detail_with_error(request: Request, prospect_id: str, error: str):
@@ -92,7 +115,7 @@ async def logout(request: Request):
 
 @router.get("", response_class=HTMLResponse)
 async def dashboard(
-    request: Request, status: str = "", q: str = "",
+    request: Request, status: str = "", q: str = "", province: str = "",
     imported: str = "", skipped: str = "",
     page: int = 1, page_size: int = 20,
 ):
@@ -104,7 +127,10 @@ async def dashboard(
     if q.strip():
         prospects = search_prospects(q.strip(), limit=50)
     else:
-        prospects, total = list_prospects_page(status=status or None, page=page, page_size=page_size)
+        prospects, total = list_prospects_page(
+            status=status or None, page=page, page_size=page_size,
+            province=province or None,
+        )
 
     stats = get_pipeline_stats()
     total_pages = (total // page_size + (1 if total % page_size else 0)) if total is not None else None
@@ -113,6 +139,7 @@ async def dashboard(
         request, "admin_dashboard.html",
         {
             "prospects": prospects, "stats": stats, "active_status": status, "q": q,
+            "active_province": province,
             "imported": imported, "skipped": skipped,
             "page": page, "page_size": page_size, "total": total, "total_pages": total_pages,
         }
@@ -199,6 +226,7 @@ async def send_reply(request: Request, prospect_id: str, text: str = Form(...), 
             # Leave the pending reply in place so the operator can retry
             # after fixing the number - discarding it would lose the draft.
             return _detail_with_error(request, prospect_id, str(e))
+        _mark_contacted(prospect)
         clear_pending_reply(prospect_id)
     return RedirectResponse(url=next, status_code=303)
 
@@ -458,4 +486,5 @@ async def manual_send(request: Request, prospect_id: str, text: str = Form(...))
             send_sms(to_phone=prospect["phone"], body=text, prospect_id=prospect_id, agent_name="manual:admin")
         except SendFailed as e:
             return _detail_with_error(request, prospect_id, str(e))
+        _mark_contacted(prospect)
     return RedirectResponse(url=f"/admin/prospects/{prospect_id}", status_code=303)

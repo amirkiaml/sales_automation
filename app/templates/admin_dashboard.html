@@ -67,16 +67,25 @@
       <a href="/admin?status=contacted" class="btn secondary small">Contacted</a>
       <a href="/admin?status=replied" class="btn secondary small">Replied</a>
       <a href="/admin?status=needs_human" class="btn secondary small">Needs human</a>
+      <span style="margin:0 6px;color:var(--text-muted);">|</span>
+      <a href="/admin?status={{ active_status }}" class="btn secondary small">All provinces</a>
+      <a href="/admin?status={{ active_status }}&province=BC" class="btn secondary small">BC</a>
+      <a href="/admin?status={{ active_status }}&province=ON" class="btn secondary small">ON</a>
     </p>
 
     {% if prospects %}
     <table>
-      <tr><th>Name</th><th>Phone</th><th>Type</th><th>Status</th><th>Last activity</th></tr>
+      <tr><th>Name</th><th>Phone</th><th>Type</th><th>Location</th><th>Status</th><th>Last activity</th></tr>
       {% for p in prospects %}
       <tr>
         <td><a href="/admin/prospects/{{ p.id }}">{{ p.name }}</a>{% if p.autopilot %} <span class="badge needs_human" title="Autopilot on">auto</span>{% endif %}</td>
         <td>{{ p.phone }}</td>
         <td>{{ p.primary_type or '—' }}</td>
+        <td>
+          {%- set addr = p.address or '' -%}
+          {%- set prov = 'BC' if ', BC' in addr else ('ON' if ', ON' in addr else '') -%}
+          {{ p.neighborhood or '—' }}{% if prov %} <span class="lede" style="margin:0;">{{ prov }}</span>{% endif %}
+        </td>
         <td><span class="badge {{ p.status }}">{{ p.status }}</span></td>
         <td>{{ p.last_reply_at or p.last_contacted_at or p.created_at }}</td>
       </tr>
@@ -87,8 +96,8 @@
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;">
       <span class="lede" style="margin:0;">Page {{ page }} of {{ total_pages }} · {{ total }} total</span>
       <span>
-        {% if page > 1 %}<a class="btn secondary small" href="/admin?status={{ active_status }}&page={{ page - 1 }}&page_size={{ page_size }}">← Prev</a>{% endif %}
-        {% if page < total_pages %}<a class="btn secondary small" href="/admin?status={{ active_status }}&page={{ page + 1 }}&page_size={{ page_size }}">Next →</a>{% endif %}
+        {% if page > 1 %}<a class="btn secondary small" href="/admin?status={{ active_status }}&province={{ active_province }}&page={{ page - 1 }}&page_size={{ page_size }}">← Prev</a>{% endif %}
+        {% if page < total_pages %}<a class="btn secondary small" href="/admin?status={{ active_status }}&province={{ active_province }}&page={{ page + 1 }}&page_size={{ page_size }}">Next →</a>{% endif %}
       </span>
     </div>
     {% endif %}

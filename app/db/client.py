@@ -4,6 +4,7 @@ these functions rather than importing the Supabase client directly -
 keeps query logic in one place and makes it easy to swap the backend later.
 """
 from datetime import datetime, timezone
+import logging
 from typing import Any, Optional
 
 from supabase import create_client, Client
@@ -12,6 +13,9 @@ from postgrest.exceptions import APIError
 from app.config import settings
 
 _client: Optional[Client] = None
+
+
+logger = logging.getLogger(__name__)
 
 
 def get_client() -> Client:
@@ -172,11 +176,15 @@ def delete_prospect(prospect_id: str) -> None:
 def save_trace(
     prospect_id: str, entry_point: str, trigger_text: str, outcome: str,
     steps: list[dict[str, Any]], duration_ms: int,
+    model_calls: int = 0, input_tokens: int = 0, output_tokens: int = 0,
+    cost_usd: float = 0.0,
 ) -> None:
     get_client().table("agent_traces").insert({
         "prospect_id": prospect_id, "entry_point": entry_point,
         "trigger_text": trigger_text[:500], "outcome": outcome,
         "steps": steps, "duration_ms": duration_ms,
+        "model_calls": model_calls, "input_tokens": input_tokens,
+        "output_tokens": output_tokens, "cost_usd": cost_usd,
     }).execute()
 
 
@@ -217,11 +225,21 @@ def get_traces_for_prospect(prospect_id: str, limit: int = 20) -> list[dict[str,
 
 def list_prospects_page(
     status: Optional[str] = None, query: Optional[str] = None,
-    page: int = 1, page_size: int = 20,
+    page: int = 1, page_size: int = 20, province: Optional[str] = None,
 ) -> tuple[list[dict[str, Any]], int]:
     """Paginated prospect list with a real total count, so the dashboard
     can show '1-20 of 484' instead of silently truncating at a fixed
-    limit. Filters by search query if given, else by status."""
+    limit. Filters by search query if given, else by status.
+
+    Province stacks with status rather than replacing it, because the
+    question that actually gets asked is "which BC leads are still new",
+    not one or the other.
+
+    Matched on the address string - there is no province column, and the
+    addresses all come from Google in a consistent ', BC V6A 1R5, Canada'
+    shape. A dedicated column would be better if this list ever includes
+    an address Google did not format.
+    """
     offset = (page - 1) * page_size
     q = get_client().table("prospects").select("*", count="exact").order("updated_at", desc=True)
     if query:
@@ -229,6 +247,8 @@ def list_prospects_page(
         q = q.or_(f"name.ilike.{like},phone.ilike.{like}")
     elif status:
         q = q.eq("status", status)
+    if province:
+        q = q.ilike("address", f"%, {province} %")
     result = q.range(offset, offset + page_size - 1).execute()
     return result.data, (result.count or 0)
 
@@ -241,10 +261,17 @@ def list_prospects(status: Optional[str] = None, limit: int = 100) -> list[dict[
 
 
 def search_prospects(query: str, limit: int = 50) -> list[dict[str, Any]]:
+    # Address and neighborhood are searchable so the console can be
+    # filtered by place - "Vancouver", "BC", "North York". With leads from
+    # two provinces in one table, that is the difference between a usable
+    # list and one you have to open row by row.
     like = f"%{query}%"
     result = (
         get_client().table("prospects").select("*")
-        .or_(f"name.ilike.{like},phone.ilike.{like}")
+        .or_(
+            f"name.ilike.{like},phone.ilike.{like},"
+            f"address.ilike.{like},neighborhood.ilike.{like}"
+        )
         .order("updated_at", desc=True).limit(limit).execute()
     )
     return result.data
