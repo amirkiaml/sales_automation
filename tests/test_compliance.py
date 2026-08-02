@@ -253,3 +253,63 @@ class TestOutboundIsSafeToSend:
 
         source = inspect.getsource(twilio_sms.send_sms)
         assert "sanitize_for_sms" in source
+
+
+class TestComplianceFooter:
+    """CASL form requirements, pinned.
+
+    Section 6 requires sender identification, contact information, and a
+    working unsubscribe mechanism in every commercial electronic message.
+    A form violation stands regardless of whether consent existed, so this
+    cannot live in a prompt - it was an instruction for a while, which is
+    the same mistake as the curly apostrophes with legal weight attached.
+    """
+
+    def test_footer_is_appended_when_missing(self):
+        from app.agents.drafting_agents import (
+            COMPLIANCE_FOOTER, append_compliance_footer)
+        assert append_compliance_footer("Some draft.").endswith(COMPLIANCE_FOOTER)
+
+    def test_footer_is_not_duplicated(self):
+        from app.agents.drafting_agents import (
+            COMPLIANCE_FOOTER, append_compliance_footer)
+        once = append_compliance_footer("Some draft.")
+        assert append_compliance_footer(once) == once
+
+    def test_footer_names_a_standard_opt_out_keyword(self):
+        """CRTC guidance for SMS names STOP and UNSUBSCRIBE.
+
+        "NO to opt-out" was the old wording. The system honoured STOP the
+        whole time and never said so.
+        """
+        from app.agents.drafting_agents import COMPLIANCE_FOOTER
+        assert "STOP" in COMPLIANCE_FOOTER
+
+    def test_footer_carries_contact_information(self):
+        """A business name alone is not enough under s.6(2).
+
+        For SMS, a link to a page carrying the name and mailing address is
+        accepted in place of putting the address inline.
+        """
+        from app.agents.drafting_agents import COMPLIANCE_FOOTER
+        assert "voicecaptures.com" in COMPLIANCE_FOOTER
+
+    def test_the_opt_out_keyword_is_actually_honoured(self):
+        """The footer must not promise an opt-out the code ignores.
+
+        Only checks the word offered for opting out. YES also appears in
+        the footer but is an interest keyword handled by triage, not an
+        unsubscribe - an earlier version of this test flagged it, which
+        was the test being wrong rather than the footer.
+        """
+        import re
+
+        from app.agents.drafting_agents import COMPLIANCE_FOOTER
+        from app.routes.webhook import STOP_KEYWORDS
+
+        match = re.search(r"([A-Z]{3,})\s+to\s+opt", COMPLIANCE_FOOTER)
+        assert match, "the footer does not name an opt-out keyword at all"
+        assert match.group(1).lower() in STOP_KEYWORDS, (
+            f"the footer tells prospects to reply {match.group(1)!r} but "
+            f"STOP_KEYWORDS does not contain it"
+        )

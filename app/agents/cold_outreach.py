@@ -15,8 +15,12 @@ from datetime import datetime, timezone
 
 from agents import Runner, trace
 
+
 from app.agents.hook_agent import generate_hook
-from app.agents.drafting_agents import DRAFTING_AGENTS, build_draft_prompt
+from app.agents.drafting_agents import (
+    DRAFTING_AGENTS, append_compliance_footer, build_draft_prompt, clean_draft,
+    fits_one_segment,
+)
 from app.agents.picker_agent import pick_best
 from app.tools.twilio_sms import send_sms
 from app.db.client import update_prospect_status
@@ -34,13 +38,39 @@ async def run_cold_outreach_for_prospect(prospect: dict, dry_run: bool = False) 
         results = await asyncio.gather(
             *[Runner.run(agent, prompt) for agent in DRAFTING_AGENTS.values()]
         )
+        # Cleaned before the picker sees them, so it judges the text that
+        # will actually be sent rather than one padded with an invented
+        # disclaimer.
         drafts = {
-            label: result.final_output
+            label: clean_draft(result.final_output)
             for label, result in zip(DRAFTING_AGENTS.keys(), results)
         }
 
-        decision = await pick_best(drafts)
-        winning_text = drafts[decision.winner]
+        # Prefer drafts that fit one SMS segment, before the picker sees
+        # them. The length ceiling is an instruction and instructions hold
+        # about 90% of the time - but three drafts are generated anyway,
+        # so rather than truncating a winner mid-sentence, just judge the
+        # ones that fit. Falls back to all three if none do, so a long
+        # batch degrades to two segments rather than to nothing.
+        fitting = {k: v for k, v in drafts.items() if fits_one_segment(v)}
+        candidates = fitting or drafts
+        oversize_dropped = sorted(set(drafts) - set(candidates))
+
+        decision = await pick_best(candidates)
+        # The picker returns a persona name, and it can name one that was
+        # filtered out for being oversize - it sees the drafts, not the
+        # dict keys. Crashed with KeyError on 1 of 37 before this guard.
+        # Falling back to the shortest candidate rather than raising: a
+        # slightly worse message beats no message.
+        if decision.winner not in candidates:
+            fallback = min(candidates, key=lambda k: len(candidates[k]))
+            decision.winner = fallback
+            decision.reason = (
+                f"picker chose an unavailable draft; fell back to {fallback}"
+            )
+        # Appended in code, after the picker, so it cannot be dropped by a
+        # model or edited on its way past.
+        winning_text = append_compliance_footer(candidates[decision.winner])
 
     output = {
         "prospect_id": prospect["id"],
@@ -50,6 +80,7 @@ async def run_cold_outreach_for_prospect(prospect: dict, dry_run: bool = False) 
         "drafts": drafts,
         "winner": decision.winner,
         "winner_reason": decision.reason,
+        "oversize_dropped": oversize_dropped,
         "sent_text": winning_text,
     }
 
