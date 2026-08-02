@@ -45,6 +45,13 @@ why the drafting agents share an angle, and why the picker returns a label
 instead of the winning text. Covers `hook_agent.py`,
 `drafting_agents.py`, `picker_agent.py`, `cold_outreach.py`.
 
+**`05_measuring_it.ipynb`** — three dry runs over the same 50 leads and
+what they found. GSM-7 segment counting and why a character count misses
+it, the 16x cost reduction, the sanitizer. Ends with the finding no
+metric caught: the agent was writing true, well-grounded, insulting
+messages, and every number on that run looked healthy. Covers
+`app/measure_cold.py` and `sanitize_for_sms`.
+
 ## What isn't covered
 
 `app/db/client.py`, the routes, the templates, `main.py`, `config.py` and

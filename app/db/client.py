@@ -180,6 +180,23 @@ def save_trace(
     }).execute()
 
 
+def delete_traces_for_prospect(prospect_id: str) -> None:
+    """Wipe the developer-view traces for one prospect.
+
+    Called from "Delete history" so the trace panel doesn't keep showing
+    runs about messages that no longer exist.
+
+    Safe to destroy because the compliance record is elsewhere:
+    `suppressions` is append-only, has no foreign key to prospects, and
+    survives both this and prospect deletion. Traces are a debugging aid.
+    If they ever become the audit trail, this should stop deleting them.
+    """
+    try:
+        get_client().table("agent_traces").delete().eq("prospect_id", prospect_id).execute()
+    except APIError:
+        pass  # table may not exist if migration 008 hasn't been run
+
+
 def get_traces_for_prospect(prospect_id: str, limit: int = 20) -> list[dict[str, Any]]:
     """Newest first. Returns [] if the table doesn't exist yet.
 

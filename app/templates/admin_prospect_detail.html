@@ -126,7 +126,7 @@
       <span>
         <a href="/admin/prospects/{{ prospect.id }}" class="refresh-link">↻ Check for new messages</a>
         <form method="post" action="/admin/prospects/{{ prospect.id }}/delete-history" style="display:inline;" onsubmit="return confirm('Permanently delete this contact\'s entire message history from Supabase? This cannot be undone.');">
-          <button type="submit" class="btn danger small" style="margin-top:0;">Delete history</button>
+          <button type="submit" class="btn danger small" style="margin-top:0;">Delete history and traces</button>
         </form>
       </span>
     </div>

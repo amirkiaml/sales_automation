@@ -21,7 +21,7 @@ from app.db.client import (
     clear_pending_reply, get_conversation_history, get_pipeline_stats, upsert_prospect, set_pending_reply,
     set_autopilot, update_prospect_status, delete_messages_for_prospect, set_history_cleared_at,
     update_prospect, DuplicatePhoneError, list_prospects_sharing_phone,
-    delete_prospect, get_traces_for_prospect,
+    delete_prospect, get_traces_for_prospect, delete_traces_for_prospect,
 )
 from app.db.import_csv import import_rows, normalize_phone, InvalidPhoneError
 from app.agents.cold_outreach import run_cold_outreach_for_prospect
@@ -299,6 +299,7 @@ async def delete_history(request: Request, prospect_id: str):
 
     set_history_cleared_at(prospect_id)
     delete_messages_for_prospect(prospect_id)
+    delete_traces_for_prospect(prospect_id)
     clear_pending_reply(prospect_id)
     return RedirectResponse(url=f"/admin/prospects/{prospect_id}", status_code=303)
 
