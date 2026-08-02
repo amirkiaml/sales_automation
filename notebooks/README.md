@@ -52,6 +52,13 @@ metric caught: the agent was writing true, well-grounded, insulting
 messages, and every number on that run looked healthy. Covers
 `app/measure_cold.py` and `sanitize_for_sms`.
 
+**`06_testing_what_must_not_fail.ipynb`** — the second kind of testing.
+Why five bugs in one evening were mostly *between* components rather than
+inside them, why a mock cannot answer "did the opt-out survive deletion?"
+and a fake can, and why four tests read source code. Ends with the two
+deliberate regressions used to check the suite actually fails. Covers
+`tests/fakes.py` and `tests/test_compliance.py`.
+
 ## What isn't covered
 
 `app/db/client.py`, the routes, the templates, `main.py`, `config.py` and
