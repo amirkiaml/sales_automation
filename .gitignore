@@ -9,3 +9,4 @@ venv/
 .ipynb_checkpoints/
 *.csv
 sales_automation/
+.vscode/
