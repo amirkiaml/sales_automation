@@ -274,6 +274,16 @@ async def toggle_autopilot(request: Request, prospect_id: str, enabled: bool = F
         return redirect
 
     set_autopilot(prospect_id, enabled=enabled)
+
+    # Turning autopilot back on is the operator saying "I've dealt with
+    # it, carry on". Nothing else ever cleared needs_human, so a prospect
+    # that escalated once stayed flagged forever even after the human
+    # handled it and re-enabled the agent.
+    if enabled:
+        prospect = get_prospect_by_id(prospect_id)
+        if prospect and prospect.get("status") == "needs_human":
+            update_prospect_status(prospect_id, status="replied")
+
     return RedirectResponse(url=f"/admin/prospects/{prospect_id}", status_code=303)
 
 

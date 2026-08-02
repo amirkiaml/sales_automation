@@ -30,6 +30,7 @@ from dataclasses import dataclass
 
 from agents import Runner, trace
 
+
 from app.agents.guardrails import check_grounding, check_scope
 from app.agents.sdr_agent import build_conversation_prompt, sdr_agent
 from app.db.client import (
@@ -71,10 +72,13 @@ def _escalate(
         for a person, or they're ready to buy. The agent replying on top of
         that conversation would be actively bad.
 
-      disable_autopilot=False - a single message the agent isn't allowed to
-        answer (pricing, an unsupported claim, a KB gap). A human answers
-        that one message; the agent resumes on the next. A prospect asking
-        one pricing question hasn't stopped being an autopilot conversation.
+      disable_autopilot=False - the agent could not answer this one
+        message but the conversation is still automatable: a KB gap, or a
+        draft that failed grounding. The prospect gets an acknowledgement
+        and the agent picks up on their next reply.
+
+    Scope blocks use True. That was False for a while, and the live
+    transcript showed why it was wrong - see run_autopilot.
 
     The draft is preserved either way - the operator usually wants to edit
     it, not rewrite from scratch.
@@ -88,7 +92,8 @@ def _escalate(
     set_pending_reply(prospect_id, pending_reply=draft, context=reason)
 
 
-def _send_holding_reply(prospect: dict, text: str, topic_id: str, tr) -> bool:
+def _send_holding_reply(prospect: dict, text: str, topic_id: str, tr,
+                        dedup: bool = True) -> bool:
     """Send a fixed acknowledgement so a blocked message isn't met with silence.
 
     Verbatim from the KB - not generated, not paraphrased by a model, and
@@ -112,12 +117,20 @@ def _send_holding_reply(prospect: dict, text: str, topic_id: str, tr) -> bool:
     # the identical text back to back, which reads broken rather than
     # helpful. The queue entry is still created either way - only the
     # duplicate outbound is suppressed.
-    recent = get_conversation_history(prospect["id"], limit=4)
-    last_outbound = next((m for m in recent if m["direction"] == "outbound"), None)
-    if last_outbound and last_outbound["body"].strip() == text.strip():
-        tr.step("holding_reply", status="skipped",
-                reason="identical holding reply was the previous outbound message")
-        return False
+    #
+    # dedup=False for scope blocks. That path now turns autopilot off, so
+    # it cannot fire twice in a row on its own - the only way to reach it
+    # again is the operator re-enabling and the prospect asking again,
+    # where a reply is wanted. Leaving dedup on there produced a silent
+    # block: the prospect asked about price, and got nothing, because the
+    # same line happened to be the last thing sent in an earlier exchange.
+    if dedup:
+        recent = get_conversation_history(prospect["id"], limit=4)
+        last_outbound = next((m for m in recent if m["direction"] == "outbound"), None)
+        if last_outbound and last_outbound["body"].strip() == text.strip():
+            tr.step("holding_reply", status="skipped",
+                    reason="identical holding reply was the previous outbound message")
+            return False
     try:
         send_sms(
             to_phone=prospect["phone"], body=text, prospect_id=prospect["id"],
@@ -146,15 +159,24 @@ async def run_autopilot(prospect: dict, history: list[dict], body: str) -> Autop
         logger.info("Autopilot blocked by scope guardrail (%s) for %s", scope.reason, prospect_id)
         # "asked for a person" means a human is taking over. A restricted
         # topic is one message the agent may not answer.
-        is_handoff = "asked for a person" in scope.reason
-        _send_holding_reply(prospect, scope.holding_reply, scope.topic_id or "restricted", tr)
+        # Any scope block stops autopilot. It briefly did not, on the
+        # reasoning that a single pricing question shouldn't end an
+        # automated conversation - but the live transcript showed what
+        # that produces: the prospect asked about price four different
+        # ways, got three "someone will text you shortly" replies, and
+        # nobody did. A bot cheerfully deflecting the same question
+        # repeatedly is worse than a queue entry.
+        #
+        # The operator turns it back on from /admin when they've handled
+        # it, which also clears needs_human.
+        _send_holding_reply(prospect, scope.holding_reply, scope.topic_id or "restricted",
+                            tr, dedup=False)
         _escalate(
             prospect_id, reason=f"Scope guardrail: {scope.reason}",
-            disable_autopilot=is_handoff,
+            disable_autopilot=True,
         )
         tr.step("autopilot_state", status="ok",
-                autopilot="disabled - human taking over" if is_handoff
-                else "left on - single message refused, agent resumes next turn")
+                autopilot="disabled - scope block, waiting on a human")
         tr.finish("blocked_scope")
         return AutopilotOutcome(action="blocked_scope", detail=scope.reason)
 
