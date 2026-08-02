@@ -59,6 +59,13 @@ and a fake can, and why four tests read source code. Ends with the two
 deliberate regressions used to check the suite actually fails. Covers
 `tests/fakes.py` and `tests/test_compliance.py`.
 
+**`07_getting_leads.ipynb`** — where prospects come from, and the finding
+that reframed the project. Field masks, typographic punctuation arriving
+in lead data, and why `--type plumber` returns a hardware store and a
+trade school. Ends with the deliverability result: four of the first five
+real messages failed as landlines, which is a fact about the channel
+rather than a bug in any component. Covers `app/scrape_places.py`.
+
 ## What isn't covered
 
 `app/db/client.py`, the routes, the templates, `main.py`, `config.py` and
