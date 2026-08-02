@@ -32,6 +32,7 @@ from pydantic import BaseModel, Field
 
 from agents import Agent, Runner
 
+
 from app.config import settings
 from app.kb.loader import Entry, holding_reply_for, load_kb, match_restricted, wants_human
 
@@ -156,12 +157,26 @@ async def check_scope(message: str) -> ScopeVerdict:
     category = (classification.category or "").strip().lower()
 
     if category == "restricted":
-        topic = classification.topic_id or "restricted topic"
+        # The classifier sometimes returns category=restricted with an empty
+        # or unrecognised topic_id. That used to become the literal string
+        # "restricted topic", which matches no KB entry, so the holding
+        # reply lookup silently returned "" and the prospect got blocked
+        # AND met with silence - exactly what holding replies exist to
+        # prevent, reintroduced through a different door.
+        #
+        # Fall back to any defined holding reply rather than depending on
+        # the model populating a second field correctly.
+        topic = classification.topic_id or ""
+        reply = holding_reply_for(topic) if topic else ""
+        if not reply:
+            kb = load_kb()
+            reply = next((r.holding_reply for r in kb.restricted if r.holding_reply), "")
+            topic = topic or "restricted"
         return ScopeVerdict(
             allowed=False,
             reason=f"{topic} (paraphrase caught by classifier: {classification.rationale})",
             escalate=True, layer="classifier", topic_id=topic,
-            holding_reply=holding_reply_for(topic),
+            holding_reply=reply,
         )
     if category == "handoff":
         return ScopeVerdict(allowed=False, reason="asked for a person", escalate=True,
