@@ -37,6 +37,22 @@ Good angles look for:
 - A generic-sounding business type with likely high call volume (urgent,
   time-sensitive calls) - plumbers, contractors, HVAC, electricians
 
+NEVER use as an angle - these are true facts that read as insults, and a
+cold text from a stranger criticising someone's business gets a grudge,
+not a reply:
+- A rating below 4.0, or any rating framed as a problem. "Your 2.7 rating
+  shows missed opportunities" is not outreach, it is an insult with a
+  sales pitch attached.
+- A low review count framed as a deficiency on its own. High-rating-but-
+  few-reviews is fine because the compliment carries it; "only 1 review"
+  as the headline is not.
+- Anything that implies the business is failing, badly run, or unpopular.
+
+The test: read the angle back as if you were the owner, on a Tuesday,
+from a number you don't recognise. If any part of it stings, pick a
+different angle. Falling back to the generic missed-calls angle is always
+better than a personalized insult.
+
 Only use "no website" as an angle if the data explicitly confirms it -
 never treat a missing or unclear website field as proof they don't have
 one; that's a data gap, not a fact about the business.
@@ -52,7 +68,7 @@ supports it (quote or closely paraphrase the data field it came from).
 hook_agent = Agent(
     name="Hook Agent",
     instructions=INSTRUCTIONS,
-    model=settings.AGENT_MODEL,
+    model=settings.DRAFTING_MODEL,
     output_type=Hook,
 )
 
