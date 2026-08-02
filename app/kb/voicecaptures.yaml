@@ -5,14 +5,6 @@
 # and blocks the send if it drifts. So this file is the boundary between
 # "the agent knows this" and "the agent is improvising at a stranger".
 #
-# ┌─────────────────────────────────────────────────────────────────┐
-# │ EVERY `answer` BELOW IS A PLACEHOLDER UNTIL YOU VERIFY IT.      │
-# │ These are reconstructed from project notes, not from the real   │
-# │ product. Anything wrong here gets texted to a real contractor   │
-# │ in your name. Read every line before enabling autopilot.        │
-# │ Entries marked UNVERIFIED are ones I could not source at all.   │
-# └─────────────────────────────────────────────────────────────────┘
-#
 # Editing rules:
 #   - `answer` is what the agent may assert. Keep it factual and short;
 #     the agent rephrases for tone, it does not add facts.
@@ -154,6 +146,47 @@ entries:
     answer: >-
       It captures the job details and books the appointment, then texts
       you the summary so nothing lives only in the assistant.
+
+  # NOTE: bare yes / no / on / off parse as BOOLEANS in YAML, not strings.
+  # They have to be quoted or the loader crashes on a bool with no .lower().
+  # Worth knowing before adding more short triggers.
+  - id: interested_send_demo
+    topic: conversation
+    triggers:
+      - "yes"
+      - "yeah"
+      - "yep"
+      - sure
+      - im interested
+      - i'm interested
+      - send it
+      - send me the link
+      - lets do it
+      - let's do it
+      - go ahead
+      - ok send
+    answer: >-
+      Great! Here's the demo link: https://voicecaptures.com. Feel free to
+      explore it, and let me know if you have any questions before trying
+      it out!
+
+  - id: not_interested
+    topic: conversation
+    triggers:
+      - not interested
+      - "no thanks"
+      - "no thank you"
+      - not right now
+      - not for us
+      - we're good
+      - were good
+      - im good
+      - i'm good
+      - all set
+      - not looking
+    answer: >-
+      No problem at all - thanks for letting me know. If anything changes
+      down the line, we're here. All the best with the business.
 
   # UNVERIFIED - I could not source these. Fill in or delete before use.
   - id: coverage_hours
