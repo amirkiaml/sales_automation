@@ -155,3 +155,34 @@ class TestKnowledgeBaseIntegrity:
             f"KB entries still contain placeholder text: {unverified}. "
             "Replace with verified facts or delete the entry."
         )
+
+
+class TestRatingFloor:
+    """Sub-4.0 ratings must never reach the hook agent.
+
+    This was a prompt instruction and measured 49/50 - one message
+    referenced a 3.9 rating and called it "impressive". The failure mode
+    is a cold text telling a stranger their business looks bad, so the
+    rule moved into code and this pins it there.
+    """
+
+    @pytest.mark.parametrize("rating", [3.9, 2.7, 1.0, 0.5, "3.5"])
+    def test_low_ratings_are_withheld(self, rating):
+        from app.agents.hook_agent import _rating_for_prompt
+        assert _rating_for_prompt({"rating": rating}) == "unknown"
+
+    @pytest.mark.parametrize("rating", [4.0, 4.5, 4.8, 5.0, "4.2"])
+    def test_good_ratings_pass_through(self, rating):
+        from app.agents.hook_agent import _rating_for_prompt
+        assert _rating_for_prompt({"rating": rating}) == str(rating)
+
+    @pytest.mark.parametrize("value", [None, "", "n/a", "unknown"])
+    def test_unusable_values_are_withheld(self, value):
+        # Anything unparseable is withheld rather than passed through as a
+        # string the agent might quote back at the prospect.
+        from app.agents.hook_agent import _rating_for_prompt
+        assert _rating_for_prompt({"rating": value}) == "unknown"
+
+    def test_missing_key_is_withheld(self):
+        from app.agents.hook_agent import _rating_for_prompt
+        assert _rating_for_prompt({}) == "unknown"
