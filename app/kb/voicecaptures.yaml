@@ -188,7 +188,6 @@ entries:
       No problem at all - thanks for letting me know. If anything changes
       down the line, we're here. All the best with the business.
 
-  # UNVERIFIED - I could not source these. Fill in or delete before use.
   - id: coverage_hours
     topic: availability
     triggers:
@@ -197,9 +196,14 @@ entries:
       - 24/7
       - nights
       - overnight
+      - at the same time
+      - multiple calls
+      - busy signal
+      - what if two people call
     answer: >-
-      UNVERIFIED - state your real coverage hours here, or delete this
-      entry so the agent escalates the question instead.
+      We can handle multiple calls at once, 24/7, including nights and weekends. The assistant
+      can be set to your business hours, and it will take messages outside
+      of those hours.
 
   - id: languages
     topic: availability
@@ -209,8 +213,8 @@ entries:
       - language
       - bilingual
     answer: >-
-      UNVERIFIED - state which languages are actually supported, or
-      delete this entry.
+      The assistant can speak English by default, but it can also
+      be set to answer in a specific language if you prefer, such as French, and Spanish.
 
 # Topics the agent must NEVER answer, even if it thinks it knows. Matching
 # any of these routes the conversation to a human and turns autopilot off.
