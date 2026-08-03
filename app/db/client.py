@@ -87,6 +87,13 @@ def get_prospect_by_phone(phone: str) -> Optional[dict[str, Any]]:
     )
     return result.data[0] if result.data else None
 
+def list_prospects_needing_lookup(limit: int) -> list[dict[str, Any]]:
+    """Prospects that have never been looked up in the line-type API. 
+    No default limit because to force the caller to think about how 
+    many they want to fetch at once."""
+    
+    query = get_client().table("prospects").select("phone", "id").limit(limit).is_("line_type_checked_at", None)
+    return query.execute().data
 
 def list_prospects_sharing_phone(phone: str, exclude_id: str = "") -> list[dict[str, Any]]:
     """Other prospects on the same number - drives the admin warning."""
