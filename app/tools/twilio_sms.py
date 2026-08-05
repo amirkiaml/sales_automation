@@ -14,7 +14,7 @@ from twilio.base.exceptions import TwilioRestException
 from agents import function_tool
 
 from app.config import settings
-from app.db.client import log_message, is_suppressed
+from app.db.client import log_message, is_suppressed, get_prospect_by_id
 
 _twilio_client: Client | None = None
 
@@ -31,8 +31,27 @@ _TWILIO_HINTS = {
 }
 
 
+# Line types a message can actually reach. An allowlist rather than a
+# blocklist of landlines: Twilio returns eleven types and can add more,
+# and an unrecognised value should stop a send rather than sail through
+# it. Unknown or unchecked numbers are allowed - the first send is what
+# produces the evidence, so refusing them would mean never learning.
+SENDABLE_LINE_TYPES = {
+    "deliverable", "mobile", "fixedVoip", "nonFixedVoip", "personal",
+    "unknown", "",
+}
+
+
 class SendFailed(Exception):
     """Twilio refused the send. Message is operator-facing."""
+
+
+class NotSendable(SendFailed):
+    """The number is known not to accept SMS.
+
+    Distinct from a send that failed once: this one fails every time, so
+    the operator should stop rather than retry.
+    """
 
 
 def _explain_twilio_error(e) -> str:
@@ -122,6 +141,18 @@ def send_sms(to_phone: str, body: str, prospect_id: str, agent_name: str = "") -
     # Checked here rather than at each call site so there is exactly one
     # place a message can leave the system, and it is guarded.
     body = sanitize_for_sms(body)
+
+    # Checked here, alongside suppression, for the same reason: one place
+    # a message can leave the system, and it is guarded. A new code path
+    # inherits both checks without having to remember them.
+    if prospect_id:
+        prospect = get_prospect_by_id(prospect_id)
+        line_type = (prospect or {}).get("line_type") or ""
+        if line_type not in SENDABLE_LINE_TYPES:
+            raise NotSendable(
+                f"{to_phone} is a {line_type} and cannot receive SMS. "
+                "Nothing sent."
+            )
 
     if is_suppressed(to_phone):
         raise SendFailed(

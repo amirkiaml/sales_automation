@@ -313,3 +313,83 @@ class TestComplianceFooter:
             f"the footer tells prospects to reply {match.group(1)!r} but "
             f"STOP_KEYWORDS does not contain it"
         )
+
+
+class TestLineTypeGuard:
+    """A number known not to accept SMS must never be sent to.
+
+    Found the hard way: 4 of the first 5 real messages failed with Twilio
+    error 30006, landline or unreachable carrier. Business numbers on
+    Google Maps are usually office landlines, and every end-to-end test
+    for three days had gone to a mobile.
+    """
+
+    def test_landline_is_refused(self, db, twilio):
+        from app.tools.twilio_sms import NotSendable, send_sms
+
+        p = db.seed_prospect(phone="+14165551234", line_type="landline")
+        with pytest.raises(NotSendable):
+            send_sms(to_phone=p["phone"], body="hi", prospect_id=p["id"])
+        assert twilio.sent == [], "a landline received a message"
+
+    def test_deliverable_number_sends(self, db, twilio):
+        from app.tools.twilio_sms import send_sms
+
+        p = db.seed_prospect(phone="+14165559999", line_type="deliverable")
+        send_sms(to_phone=p["phone"], body="hi", prospect_id=p["id"])
+        assert len(twilio.sent) == 1
+
+    def test_unchecked_number_still_sends(self, db, twilio):
+        """The first send is what produces the evidence.
+
+        Refusing unchecked numbers would mean never learning any line
+        type at all, since the delivery result is the only signal
+        available while Lookup is blocked for Canadian numbers.
+        """
+        from app.tools.twilio_sms import send_sms
+
+        p = db.seed_prospect(phone="+14165558888")  # line_type absent
+        send_sms(to_phone=p["phone"], body="hi", prospect_id=p["id"])
+        assert len(twilio.sent) == 1
+
+    @pytest.mark.parametrize("line_type", ["voicemail", "pager", "premium", "wat"])
+    def test_unrecognised_types_are_refused(self, db, twilio, line_type):
+        """Allowlist, not blocklist.
+
+        Twilio returns eleven line types and can add more. An unfamiliar
+        value should stop a send rather than sail through it.
+        """
+        from app.tools.twilio_sms import NotSendable, send_sms
+
+        p = db.seed_prospect(phone="+14165557777", line_type=line_type)
+        with pytest.raises(NotSendable):
+            send_sms(to_phone=p["phone"], body="hi", prospect_id=p["id"])
+        assert twilio.sent == []
+
+
+class TestDeliveryClassification:
+    """Only a conclusive result may stamp line_type_checked_at."""
+
+    def test_landline_error_is_conclusive(self):
+        from app.check_delivery import classify
+        assert classify("undelivered", 30006) == "landline"
+
+    def test_delivered_means_deliverable_not_mobile(self):
+        """A delivered message does not prove a handset - fixedVoip
+        receives SMS fine. What the guard needs is whether it arrives."""
+        from app.check_delivery import classify
+        assert classify("delivered", None) == "deliverable"
+
+    @pytest.mark.parametrize("status,code", [
+        ("queued", None), ("sending", None), ("sent", None),
+        ("failed", 30003), ("failed", 30005),
+    ])
+    def test_inconclusive_results_return_none(self, status, code):
+        """None keeps the row eligible for a later answer.
+
+        30003 and 30005 are unreachable-handset and unknown-destination:
+        usually about the moment, not the line. Recording them would
+        permanently exclude numbers that work tomorrow.
+        """
+        from app.check_delivery import classify
+        assert classify(status, code) is None

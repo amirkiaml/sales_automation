@@ -87,13 +87,6 @@ def get_prospect_by_phone(phone: str) -> Optional[dict[str, Any]]:
     )
     return result.data[0] if result.data else None
 
-def list_prospects_needing_lookup(limit: int) -> list[dict[str, Any]]:
-    """Prospects that have never been looked up in the line-type API. 
-    No default limit because to force the caller to think about how 
-    many they want to fetch at once."""
-    
-    query = get_client().table("prospects").select("phone", "id").limit(limit).is_("line_type_checked_at", None)
-    return query.execute().data
 
 def list_prospects_sharing_phone(phone: str, exclude_id: str = "") -> list[dict[str, Any]]:
     """Other prospects on the same number - drives the admin warning."""
@@ -228,6 +221,63 @@ def get_traces_for_prospect(prospect_id: str, limit: int = 20) -> list[dict[str,
         return result.data or []
     except APIError:
         return []
+
+
+def list_prospects_needing_lookup(limit: int) -> list[dict[str, Any]]:
+    """Prospects never looked up in the line-type API.
+
+    No default limit, to force the caller to decide how many to fetch -
+    this function costs money per row downstream.
+    """
+    query = (
+        get_client().table("prospects").select("phone", "id")
+        .limit(limit).is_("line_type_checked_at", None)
+    )
+    return query.execute().data
+
+
+def list_outbound_sids_needing_status(limit: int = 500) -> list[dict[str, Any]]:
+    """Outbound messages whose prospect has no line_type yet.
+
+    The delivery-status route to line type: a send that failed with Twilio
+    error 30006 IS the answer "this number is a landline". Reading those
+    statuses back costs nothing, where Lookup's Line Type Intelligence is
+    blocked for Canadian numbers pending NPAC approval.
+
+    Returns one row per outbound message that has a SID. The caller
+    dedupes by prospect - the first conclusive answer wins.
+    """
+    rows = (
+        get_client().table("messages")
+        .select("prospect_id,twilio_sid,phone")
+        .eq("direction", "outbound")
+        .limit(limit)
+        .execute()
+    ).data or []
+    rows = [r for r in rows if r.get("twilio_sid")]
+    if not rows:
+        return []
+
+    unchecked = {
+        p["id"]
+        for p in (
+            get_client().table("prospects").select("id")
+            .is_("line_type_checked_at", None).limit(2000).execute().data or []
+        )
+    }
+    return [r for r in rows if r["prospect_id"] in unchecked]
+
+
+def set_line_type(prospect_id: str, line_type: str) -> None:
+    """Record a line type and stamp when it was determined.
+
+    checked_at is what stops a number being asked about again, so it is
+    only ever set alongside a real answer.
+    """
+    update_prospect(prospect_id, {
+        "line_type": line_type,
+        "line_type_checked_at": datetime.now(timezone.utc).isoformat(),
+    })
 
 
 def list_prospects_page(
