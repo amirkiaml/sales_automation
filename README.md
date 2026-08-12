@@ -5,6 +5,8 @@ and Twilio. Sends bulk cold outreach via a deterministic multi-agent
 drafting/picker pipeline, then hands live conversations to a stateful
 conversational SDR agent that responds to inbound replies in real time.
 
+![Cold outreach workflow](app/static/images/sales-automation.png)
+
 ## What this cost and what it found
 
 Cold SMS outreach to home service businesses in BC. 37 leads scraped from
